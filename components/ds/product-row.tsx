@@ -56,7 +56,10 @@ export function ProductRow({
               {product.variant}
             </p>
           )}
-          <Price amount={product.price} className="mt-1.5 block" />
+          <Price
+            amount={product.price}
+            className="mt-1.5 block text-lg font-semibold"
+          />
         </div>
         <StockBadge
           key={remaining}

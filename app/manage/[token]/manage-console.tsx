@@ -5,7 +5,6 @@ import {
   Clock3,
   MapPin,
   PackageCheck,
-  Radio,
   Square,
   Truck,
 } from 'lucide-react'
@@ -293,11 +292,8 @@ export function ManageConsole({
 
   return (
     <>
-      <header className="mb-8">
-        <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-          Store
-        </p>
-        <div className="mt-2 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
+      <header className="mb-10">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h1 className="font-display text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
               {snapshot.drop.seller_name}
@@ -311,6 +307,7 @@ export function ManageConsole({
             <Button
               type="button"
               size="lg"
+              variant="outline"
               onClick={endDropNow}
               disabled={ending}
             >
@@ -320,7 +317,7 @@ export function ManageConsole({
           )}
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-2">
+        <div className="mt-5 flex flex-wrap items-center gap-3">
           {snapshot.settled ? (
             <span className="inline-flex items-center gap-2 rounded-full bg-foreground px-4 py-2 font-mono text-sm text-background">
               <PackageCheck className="size-4" />
@@ -331,10 +328,6 @@ export function ManageConsole({
               <ConsoleCountdown endsAt={snapshot.drop.window_ends_at} />
             </LivePill>
           )}
-          <span className="inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 font-mono text-sm text-secondary-foreground tabular-nums">
-            <Radio className="size-4 text-live" />
-            {snapshot.orders.length} orders
-          </span>
           <span className="font-mono text-xs text-muted-foreground">
             closes {sgtDateTime.format(new Date(snapshot.drop.window_ends_at))} SGT
           </span>
@@ -350,18 +343,18 @@ export function ManageConsole({
       )}
 
       {paidLateOrders.length > 0 && (
-        <section aria-labelledby="refunds-title" className="mb-8">
-          <div className="mb-3 flex items-center justify-between gap-3">
-            <div>
-              <p className="font-mono text-xs tracking-widest text-alarm uppercase">
-                Action required
-              </p>
-              <h2 id="refunds-title" className="mt-1 font-display text-2xl">
-                Refund {paidLateOrders.length}{' '}
-                {paidLateOrders.length === 1 ? 'payment' : 'payments'}
-              </h2>
-            </div>
-            <StatusPill status="PAID_LATE" />
+        <section aria-labelledby="refunds-title" className="mb-10">
+          <div className="mb-3">
+            <p className="font-mono text-xs tracking-widest text-alarm uppercase">
+              Action required
+            </p>
+            <h2
+              id="refunds-title"
+              className="mt-1 font-display text-2xl font-semibold"
+            >
+              Refund {paidLateOrders.length}{' '}
+              {paidLateOrders.length === 1 ? 'payment' : 'payments'}
+            </h2>
           </div>
 
           <div className="flex flex-col gap-3">
@@ -398,63 +391,60 @@ export function ManageConsole({
         </section>
       )}
 
-      <section aria-labelledby="stock-title" className="mb-8">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-              Inventory
-            </p>
-            <h2 id="stock-title" className="mt-1 font-display text-2xl">
-              Stock remaining
-            </h2>
-          </div>
+      <section aria-labelledby="stock-title" className="mb-10">
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <h2
+            id="stock-title"
+            className="font-display text-2xl font-semibold"
+          >
+            Stock
+          </h2>
           <span className="font-mono text-xs text-muted-foreground">
-            Paid orders only
+            paid orders only
           </span>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {snapshot.products.map((product) => {
-            const remaining = product.stock_total - product.stock_sold
-            return (
-              <Card key={product.id} size="sm">
-                <CardHeader>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <CardTitle className="truncate font-sans font-semibold">
-                        {product.name}
-                      </CardTitle>
-                      {product.variant && (
-                        <CardDescription className="mt-0.5 line-clamp-2">
-                          {product.variant}
-                        </CardDescription>
-                      )}
-                    </div>
+        <Card className="py-1">
+          <ul className="divide-y divide-border">
+            {snapshot.products.map((product) => {
+              const remaining = product.stock_total - product.stock_sold
+              return (
+                <li
+                  key={product.id}
+                  className="flex items-center justify-between gap-4 px-5 py-3.5"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold">{product.name}</p>
+                    {product.variant && (
+                      <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                        {product.variant}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-4">
+                    <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                      {product.stock_sold}/{product.stock_total} sold
+                    </span>
                     <StockBadge
                       key={remaining}
                       remaining={remaining}
                       className="animate-tick"
                     />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <p className="font-mono text-xs text-muted-foreground tabular-nums">
-                    {product.stock_sold} paid · {product.stock_total} total
-                  </p>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
+                </li>
+              )
+            })}
+          </ul>
+        </Card>
       </section>
 
       {snapshot.settled && (
-        <section aria-labelledby="settlement-title" className="mb-8">
+        <section aria-labelledby="settlement-title" className="mb-10">
           <div className="mb-4">
-            <p className="font-mono text-xs tracking-widest text-live uppercase">
-              Drop settled
-            </p>
-            <h2 id="settlement-title" className="mt-1 font-display text-3xl">
+            <h2
+              id="settlement-title"
+              className="font-display text-3xl font-semibold"
+            >
               Ready to fulfil
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
@@ -535,17 +525,15 @@ export function ManageConsole({
       )}
 
       <section aria-labelledby="orders-title" aria-live="polite">
-        <div className="mb-3 flex items-end justify-between gap-3">
-          <div>
-            <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-              {snapshot.settled ? 'Final' : 'Live'}
-            </p>
-            <h2 id="orders-title" className="mt-1 font-display text-2xl">
-              All orders
-            </h2>
-          </div>
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <h2 id="orders-title" className="font-display text-2xl font-semibold">
+            Orders{' '}
+            <span className="font-mono text-base font-normal text-muted-foreground tabular-nums">
+              {snapshot.orders.length}
+            </span>
+          </h2>
           <span className="font-mono text-xs text-muted-foreground">
-            Updated{' '}
+            updated{' '}
             {new Date(snapshot.refreshed_at).toLocaleTimeString('en-SG', {
               hour: '2-digit',
               minute: '2-digit',

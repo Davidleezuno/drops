@@ -45,7 +45,7 @@ export function Poster({
     >
       <p
         className={cn(
-          "font-display text-5xl leading-none font-black tracking-tight text-balance",
+          "font-display text-5xl leading-none font-extrabold tracking-tight text-balance",
           v.title
         )}
       >

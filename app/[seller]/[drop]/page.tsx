@@ -47,7 +47,7 @@ export default async function DropPage({
 
       <footer className="mt-auto pt-12 text-center">
         <p className="font-mono text-xs text-muted-foreground/60">
-          a <span className="font-display text-sm italic">Drops</span>{' '}
+          a <span className="font-display text-sm font-semibold">Drops</span>{' '}
           storefront
         </p>
       </footer>

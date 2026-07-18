@@ -122,7 +122,7 @@ export async function POST(request: Request) {
       purpose: `${product.drop.seller_name} — ${product.name} ×${details.quantity}${deliveryDescription}`,
       buyerName: details.buyerName,
       buyerContact: details.buyerContact,
-      redirectUrl: `${appUrl}/order/${order.id}`,
+      redirectUrl: `${appUrl}/${product.drop.seller_slug}/${product.drop.drop_slug}`,
     })
   } catch (error) {
     console.error('HitPay payment request failed', error)

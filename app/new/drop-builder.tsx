@@ -594,7 +594,7 @@ export function DropBuilder() {
             </div>
             <p className="mt-5 max-w-[90vw] font-mono text-xl break-all sm:text-3xl">
               {publishedHost}/{published.sellerSlug}/
-              <span className="text-primary">{published.dropSlug}</span>
+              <span className="font-medium text-flame">{published.dropSlug}</span>
             </p>
           </div>
         )}
@@ -624,7 +624,7 @@ export function DropBuilder() {
           </div>
           <p className="mt-5 font-mono text-xs break-all sm:text-sm">
             {publishedHost}/{published.sellerSlug}/
-            <span className="text-primary">{published.dropSlug}</span>
+            <span className="font-medium text-flame">{published.dropSlug}</span>
           </p>
           <Button
             type="button"
@@ -715,7 +715,7 @@ export function DropBuilder() {
           </button>
           <p className="mt-7 font-mono text-xs break-all text-muted-foreground">
             {host}/{sellerSlug}/
-            <span className="text-primary">{cleanDropSlug}</span>
+            <span className="font-medium text-flame">{cleanDropSlug}</span>
           </p>
           <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight">
             Check the draft.
@@ -984,7 +984,7 @@ export function DropBuilder() {
             }}
             onDrop={dropImages}
           >
-            <span className="flex size-12 items-center justify-center rounded-full bg-accent text-primary transition-transform group-hover:scale-105">
+            <span className="flex size-12 items-center justify-center rounded-full bg-accent text-flame transition-transform group-hover:scale-105">
               <ImagePlus className="size-5" />
             </span>
             <span className="mt-3 text-sm font-semibold">
@@ -1049,7 +1049,7 @@ export function DropBuilder() {
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
             <p className="font-mono text-xs text-muted-foreground">
               {host}/{sellerSlug}/
-              <span className="text-primary">{cleanDropSlug}</span>
+              <span className="font-medium text-flame">{cleanDropSlug}</span>
             </p>
             {!editingSlug && (
               <button
