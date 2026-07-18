@@ -12,6 +12,8 @@ export type ProductDraft = {
   variant: string
   price: string
   stock: string
+  imageUrl: string | null
+  imageSource: 'uploaded' | 'generated' | null
 }
 
 export function ExtractedProductRow({

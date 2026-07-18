@@ -19,6 +19,7 @@ export type Product = {
   drop_id: string
   name: string
   variant: string | null
+  image_url: string | null
   price: number
   stock_total: number
   stock_sold: number

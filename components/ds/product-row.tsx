@@ -1,3 +1,5 @@
+import Image from "next/image"
+
 import { Price } from "@/components/ds/price"
 import { StockBadge, stockState } from "@/components/ds/stock-badge"
 import type { Product } from "@/lib/types"
@@ -33,6 +35,19 @@ export function ProductRow({
         className
       )}
     >
+      {product.image_url && (
+        <div className="relative mb-4 aspect-square overflow-hidden rounded-xl bg-muted sm:aspect-[4/3]">
+          <Image
+            src={product.image_url}
+            alt={`${product.name} product shot`}
+            fill
+            className="object-cover"
+            sizes="(max-width: 448px) 100vw, 448px"
+            priority={false}
+          />
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-4">
         <div className="min-w-0">
           <p className="font-semibold">{product.name}</p>

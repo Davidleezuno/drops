@@ -23,6 +23,7 @@ export const createDropSchema = z.object({
         variant: z.string().trim().max(120).nullable(),
         price: z.number().positive().max(100_000),
         stock: z.number().int().positive().max(100_000),
+        imageUrl: z.url().max(2_000).nullable(),
       }),
     )
     .min(1)

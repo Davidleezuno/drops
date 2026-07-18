@@ -15,6 +15,23 @@ type CreatedDrop = {
   manage_token: string
 }
 
+function isOwnedProductShotUrl(value: string | null) {
+  if (!value) return true
+
+  try {
+    const url = new URL(value)
+    const supabaseUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!)
+    return (
+      url.origin === supabaseUrl.origin &&
+      url.pathname.startsWith(
+        '/storage/v1/object/public/product-shots/',
+      )
+    )
+  } catch {
+    return false
+  }
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
   const parsed = createDropSchema.safeParse(body)
@@ -28,6 +45,13 @@ export async function POST(request: NextRequest) {
 
   const input = parsed.data
   const windowEndsAt = new Date(input.windowEndsAt)
+
+  if (input.products.some((product) => !isOwnedProductShotUrl(product.imageUrl))) {
+    return NextResponse.json(
+      { error: 'One of the product photos is invalid. Add it again and retry.' },
+      { status: 400 },
+    )
+  }
 
   if (windowEndsAt <= new Date()) {
     return NextResponse.json(
@@ -88,6 +112,7 @@ export async function POST(request: NextRequest) {
       drop_id: createdDrop.id,
       name: product.name,
       variant: product.variant || null,
+      image_url: product.imageUrl,
       price: product.price,
       stock_total: product.stock,
     })),

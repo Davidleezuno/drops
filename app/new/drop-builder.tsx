@@ -22,6 +22,7 @@ import {
   ExtractedProductRow,
   type ProductDraft,
 } from '@/components/ds/extracted-product-row'
+import { StorefrontDraftPreview } from '@/components/ds/storefront-draft-preview'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -58,6 +59,8 @@ function newProduct(product?: {
     variant: product?.variant ?? '',
     price: product ? String(product.price) : '',
     stock: '10',
+    imageUrl: null,
+    imageSource: null,
   }
 }
 
@@ -125,6 +128,10 @@ export function DropBuilder() {
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState<PublishedDrop | null>(null)
   const [projectingQr, setProjectingQr] = useState(false)
+  const [busyProductIds, setBusyProductIds] = useState<string[]>([])
+  const [productShotErrors, setProductShotErrors] = useState<
+    Record<string, string>
+  >({})
 
   const previewUrl = useMemo(
     () => (file ? URL.createObjectURL(file) : null),
@@ -161,6 +168,116 @@ export function DropBuilder() {
         product.id === updated.id ? updated : product,
       ),
     )
+  }
+
+  function updateProductImage(
+    productId: string,
+    imageUrl: string,
+    imageSource: ProductDraft['imageSource'],
+  ) {
+    setProducts((current) =>
+      current.map((product) =>
+        product.id === productId
+          ? { ...product, imageUrl, imageSource }
+          : product,
+      ),
+    )
+  }
+
+  function setProductShotBusy(productId: string, busy: boolean) {
+    setBusyProductIds((current) =>
+      busy
+        ? current.includes(productId)
+          ? current
+          : [...current, productId]
+        : current.filter((id) => id !== productId),
+    )
+  }
+
+  function setProductShotError(productId: string, message?: string) {
+    setProductShotErrors((current) => {
+      const next = { ...current }
+      if (message) next[productId] = message
+      else delete next[productId]
+      return next
+    })
+  }
+
+  async function uploadProductShot(product: ProductDraft, image: File) {
+    setProductShotBusy(product.id, true)
+    setProductShotError(product.id)
+
+    try {
+      const prepared = await prepareImage(image)
+      const formData = new FormData()
+      formData.set('mode', 'upload')
+      formData.set('image', prepared, image.name)
+
+      const response = await fetch('/api/product-shots', {
+        method: 'POST',
+        body: formData,
+      })
+      const result = (await response.json()) as {
+        imageUrl?: string
+        error?: string
+      }
+      if (!response.ok || !result.imageUrl) {
+        throw new Error(result.error || 'That photo could not be saved.')
+      }
+
+      updateProductImage(product.id, result.imageUrl, 'uploaded')
+    } catch (caught) {
+      setProductShotError(
+        product.id,
+        caught instanceof Error ? caught.message : 'That photo could not be saved.',
+      )
+    } finally {
+      setProductShotBusy(product.id, false)
+    }
+  }
+
+  async function improveProductShot(product: ProductDraft) {
+    setProductShotBusy(product.id, true)
+    setProductShotError(product.id)
+
+    try {
+      const formData = new FormData()
+      formData.set('name', product.name)
+      formData.set('variant', product.variant)
+
+      if (product.imageUrl) {
+        formData.set('referenceUrl', product.imageUrl)
+      } else if (
+        file &&
+        ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+      ) {
+        const prepared = await prepareImage(file)
+        formData.set('image', prepared, file.name)
+      }
+
+      const response = await fetch('/api/product-shots', {
+        method: 'POST',
+        body: formData,
+      })
+      const result = (await response.json()) as {
+        imageUrl?: string
+        error?: string
+      }
+      if (!response.ok || !result.imageUrl) {
+        throw new Error(result.error || 'That product shot could not be improved.')
+      }
+
+      updateProductImage(product.id, result.imageUrl, 'generated')
+    } catch (caught) {
+      setProductShotError(
+        product.id,
+        caught instanceof Error
+          ? caught.message
+          : 'That product shot could not be improved.',
+      )
+    } finally {
+      setProductShotBusy(product.id, false)
+    }
   }
 
   async function shareBuyerLink() {
@@ -240,6 +357,7 @@ export function DropBuilder() {
             variant: product.variant.trim() || null,
             price: Number(product.price),
             stock: Number(product.stock),
+            imageUrl: product.imageUrl,
           })),
           windowEndsAt: new Date(windowEndsAt).toISOString(),
           fulfilment,
@@ -424,10 +542,34 @@ export function DropBuilder() {
         </header>
 
         <section className="mt-9">
+          <div className="mb-4">
+            <p className="font-mono text-xs tracking-widest text-primary uppercase">
+              1 · Preview
+            </p>
+            <h2 className="mt-1 font-display text-2xl font-semibold">
+              See what buyers will see
+            </h2>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+              Product photos are optional. Add your own or use AI to turn a rough
+              reference into a clean storefront shot.
+            </p>
+          </div>
+          <StorefrontDraftPreview
+            sellerName={sellerName}
+            dropSlug={dropSlug}
+            products={products}
+            busyProductIds={busyProductIds}
+            errors={productShotErrors}
+            onImprove={improveProductShot}
+            onUpload={uploadProductShot}
+          />
+        </section>
+
+        <section className="mt-9 border-t border-border pt-8">
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <p className="font-mono text-xs tracking-widest text-primary uppercase">
-                1 · Stock
+                2 · Stock
               </p>
               <h2 className="mt-1 font-display text-2xl font-semibold">
                 What&rsquo;s available
@@ -467,7 +609,7 @@ export function DropBuilder() {
 
         <section className="mt-9 border-t border-border pt-8">
           <p className="font-mono text-xs tracking-widest text-primary uppercase">
-            2 · Window
+            3 · Window
           </p>
           <h2 className="mt-1 font-display text-2xl font-semibold">
             When does it end?
@@ -491,7 +633,7 @@ export function DropBuilder() {
 
         <section className="mt-9 border-t border-border pt-8">
           <p className="font-mono text-xs tracking-widest text-primary uppercase">
-            3 · Fulfilment
+            4 · Fulfilment
           </p>
           <h2 className="mt-1 font-display text-2xl font-semibold">
             How will buyers get it?
@@ -557,7 +699,7 @@ export function DropBuilder() {
           type="submit"
           size="lg"
           className="mt-8 w-full"
-          disabled={publishing}
+          disabled={publishing || busyProductIds.length > 0}
         >
           {publishing ? (
             <>

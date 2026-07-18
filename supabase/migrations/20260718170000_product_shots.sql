@@ -1,0 +1,25 @@
+-- Optional product photography for storefront cards.
+
+alter table public.products
+  add column if not exists image_url text;
+
+insert into storage.buckets (
+  id,
+  name,
+  public,
+  file_size_limit,
+  allowed_mime_types
+)
+values (
+  'product-shots',
+  'product-shots',
+  true,
+  5242880,
+  array['image/jpeg', 'image/png', 'image/webp']
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+grant update on table public.products to service_role;
