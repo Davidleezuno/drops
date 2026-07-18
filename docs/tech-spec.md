@@ -8,7 +8,7 @@ Companion to [spec.md](spec.md). Decisions locked 18 Jul: single Next.js codebas
 
 - **Next.js (App Router) on Vercel** — all pages and all server logic, including the webhook route. One codebase, one deploy.
 - **Supabase** — Postgres (data + the one guarded stock write) and Realtime (counter fan-out to phones/projector). No Edge Functions, no Supabase Auth.
-- **Vercel AI Gateway via AI SDK** (`ai` v6; a plain `"provider/model"` string routes through the gateway automatically) — menu-image extraction only, structured output via zod. Model is config, not code: `EXTRACT_MODEL` env var, default `anthropic/claude-sonnet-5`, swappable to any gateway slug (e.g. `openai/gpt-5.4`, `google/gemini-3-flash`) without a code change. Gateway gives cost tracking and failover for free. AI never touches money or stock.
+- **Vercel AI Gateway via AI SDK** (`ai` v6; a plain `"provider/model"` string routes through the gateway automatically) — menu-image extraction only, structured output via zod. Model is config, not code: `EXTRACT_MODEL` env var, default `openai/gpt-5.6-terra`, swappable to any gateway slug without a code change. Gateway gives cost tracking and model failover. AI never touches money or stock.
 - **HitPay sandbox** — payment requests + dashboard-registered webhook.
 
 ## 2. Repo layout
@@ -89,7 +89,7 @@ create table webhook_events (
 
 ### 4a. Create a drop (`/new`)
 
-1. Seller uploads photo → `POST /api/extract` → `generateObject({ model: process.env.EXTRACT_MODEL, ... })` through AI Gateway, zod schema `{ products: [{ name, variant?, price }] }`. Single call, ~3 s. Optional resilience, one line: `providerOptions: { gateway: { models: ['openai/gpt-5.4'] } }` as fallback model if the primary errors on the night.
+1. Seller uploads photo → `POST /api/extract` → `generateText({ model: process.env.EXTRACT_MODEL, output: Output.object({ schema }) })` through AI Gateway, zod schema `{ products: [{ name, variant, price }] }`. Single call, ~3 s. Resilience comes from `providerOptions: { gateway: { models: [process.env.EXTRACT_FALLBACK_MODEL ?? 'anthropic/claude-sonnet-4.6'] } }` when the primary errors on the night.
 2. **One review form, not a chat.** Extracted rows are editable inline; the three blocking fields sit below: stock per item, window end, fulfilment (pickup / delivery + fee). This *is* the "max 3 questions".
 3. `POST /api/drops` → insert drop + products, generate `manage_token`, derive slugs (kebab-case seller name + short word, editable) → respond with both URLs. UI shows buyer link big + QR, console link with a "keep this secret" note.
 
@@ -156,7 +156,8 @@ Drop end is evaluated on read (`window_ends_at < now() or status='ended'`) — n
 ```
 HITPAY_API_KEY                sandbox dashboard → Developers → API Keys
 HITPAY_WEBHOOK_SALT           dashboard → Developers → Webhooks → (endpoint) → salt
-EXTRACT_MODEL                 gateway slug, default anthropic/claude-sonnet-5
+EXTRACT_MODEL                 gateway slug, default openai/gpt-5.6-terra
+EXTRACT_FALLBACK_MODEL        optional fallback slug, default anthropic/claude-sonnet-4.6
 VERCEL_OIDC_TOKEN             AI Gateway auth — auto on Vercel; locally via `vercel env pull`
                               (or set AI_GATEWAY_API_KEY for a static key; no ANTHROPIC_API_KEY)
 NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY

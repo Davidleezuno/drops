@@ -1,0 +1,50 @@
+import { z } from 'zod'
+
+export const extractedMenuSchema = z.object({
+  products: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        variant: z.string().max(120).nullable(),
+        price: z.number().positive().max(100_000),
+      }),
+    )
+    .min(1)
+    .max(30),
+})
+
+export const createDropSchema = z.object({
+  sellerName: z.string().trim().min(1).max(80),
+  dropSlug: z.string().trim().min(1).max(64),
+  products: z
+    .array(
+      z.object({
+        name: z.string().trim().min(1).max(120),
+        variant: z.string().trim().max(120).nullable(),
+        price: z.number().positive().max(100_000),
+        stock: z.number().int().positive().max(100_000),
+      }),
+    )
+    .min(1)
+    .max(30),
+  windowEndsAt: z.iso.datetime(),
+  fulfilment: z.enum(['pickup', 'delivery', 'both']),
+  deliveryFee: z.number().min(0).max(100_000),
+  pickupNote: z.string().trim().max(240).nullable(),
+})
+
+export type ExtractedMenu = z.infer<typeof extractedMenuSchema>
+export type CreateDropInput = z.infer<typeof createDropSchema>
+
+export function slugify(value: string, fallback: string) {
+  const slug = value
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64)
+
+  return slug || fallback
+}

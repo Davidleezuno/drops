@@ -26,11 +26,15 @@ export default function Home() {
         className="mt-8 flex animate-rise items-center gap-3"
         style={{ animationDelay: '240ms' }}
       >
-        <Button size="lg" render={<Link href="/rotiwife/tonight" />}>
-          See a live drop
+        <Button size="lg" render={<Link href="/new" />}>
+          Create a drop
         </Button>
-        <Button size="lg" variant="ghost" disabled>
-          Create a drop — soon
+        <Button
+          size="lg"
+          variant="ghost"
+          render={<Link href="/rotiwife/tonight" />}
+        >
+          See a live drop
         </Button>
       </div>
     </main>
