@@ -23,3 +23,40 @@ export type Product = {
   stock_total: number
   stock_sold: number
 }
+
+export type ManageDrop = Pick<
+  Drop,
+  | 'id'
+  | 'seller_name'
+  | 'seller_slug'
+  | 'drop_slug'
+  | 'fulfilment'
+  | 'delivery_fee'
+  | 'pickup_note'
+  | 'window_ends_at'
+  | 'status'
+>
+
+export type ManageOrder = {
+  id: string
+  product_id: string
+  product_name: string
+  product_variant: string | null
+  qty: number
+  buyer_name: string
+  buyer_contact: string
+  fulfilment: 'pickup' | 'delivery'
+  address: string | null
+  amount: number
+  status: OrderStatus
+  paid_at: string | null
+  created_at: string
+}
+
+export type ManageSnapshot = {
+  drop: ManageDrop
+  products: Product[]
+  orders: ManageOrder[]
+  settled: boolean
+  refreshed_at: string
+}
