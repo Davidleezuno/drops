@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { sgd } from '@/lib/format'
 import { orderTotalCents } from '@/lib/money'
 
 type Fulfilment = 'pickup' | 'delivery'
@@ -56,7 +57,7 @@ export function BuyFlow({
 
   if (remaining <= 0) {
     return (
-      <Button type="button" size="lg" className="mt-4 w-full" disabled>
+      <Button type="button" size="lg" className="mt-4 h-12 w-full" disabled>
         Sold out
       </Button>
     )
@@ -108,19 +109,20 @@ export function BuyFlow({
       <Button
         type="button"
         size="lg"
-        className="mt-4 w-full"
+        className="mt-4 h-12 w-full"
+        aria-label={`Buy ${productName}`}
         onClick={() => setOpen(true)}
       >
-        Buy {productName}
+        Buy
       </Button>
     )
   }
 
   return (
     <form className="mt-4 border-t border-border pt-4" onSubmit={handleSubmit}>
-      <div className="grid grid-cols-2 gap-3">
+      <div className={fulfilment === 'both' ? 'grid grid-cols-2 gap-3' : ''}>
         <div className="space-y-1.5">
-          <Label htmlFor={`quantity-${productId}`}>Quantity</Label>
+          <Label htmlFor={`quantity-${productId}`}>How many</Label>
           <Input
             id={`quantity-${productId}`}
             name="quantity"
@@ -134,9 +136,9 @@ export function BuyFlow({
           />
         </div>
 
-        {fulfilment === 'both' ? (
+        {fulfilment === 'both' && (
           <div className="space-y-1.5">
-            <Label htmlFor={`fulfilment-${productId}`}>Getting it</Label>
+            <Label htmlFor={`fulfilment-${productId}`}>Pickup or delivery</Label>
             <Select
               value={selectedFulfilment}
               onValueChange={(value) => setSelectedFulfilment(value as Fulfilment)}
@@ -145,20 +147,17 @@ export function BuyFlow({
                 id={`fulfilment-${productId}`}
                 className="h-8 w-full"
               >
-                <SelectValue />
+                <SelectValue>
+                  {(value: Fulfilment) =>
+                    value === 'delivery' ? 'Delivery' : 'Pickup'
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="pickup">Pickup</SelectItem>
                 <SelectItem value="delivery">Delivery</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-        ) : (
-          <div className="space-y-1.5">
-            <Label>Getting it</Label>
-            <div className="flex h-8 items-center rounded-lg border border-border px-2.5 text-sm capitalize">
-              {selectedFulfilment}
-            </div>
           </div>
         )}
       </div>
@@ -204,14 +203,14 @@ export function BuyFlow({
       )}
 
       <div className="mt-4 flex items-center justify-between rounded-xl bg-muted px-3 py-2.5">
-        <div>
-          <p className="text-xs text-muted-foreground">
-            {quantity || 1} × item
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">Total</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {quantity || 1} × {productName}
             {selectedFulfilment === 'delivery'
-              ? ` + S$${deliveryFee.toFixed(2)} delivery`
+              ? ` + ${sgd.format(deliveryFee)} delivery`
               : ''}
           </p>
-          <p className="text-sm font-semibold">Total</p>
         </div>
         <Price amount={totalCents / 100} className="text-base" />
       </div>
@@ -225,21 +224,25 @@ export function BuyFlow({
       <Button
         type="submit"
         size="lg"
-        className="mt-4 w-full"
+        className="mt-4 h-12 w-full"
         disabled={submitting || quantity < 1 || quantity > remaining}
       >
         {submitting ? (
           <>
             <LoaderCircle className="animate-spin" />
-            Opening secure checkout…
+            Opening checkout…
           </>
         ) : (
           <>
             <LockKeyhole />
-            Continue to HitPay
+            Continue to payment
           </>
         )}
       </Button>
+      <p className="mt-2 text-center text-xs leading-relaxed text-muted-foreground">
+        You&rsquo;ll pay on HitPay — PayNow, card or GrabPay. Your order is
+        confirmed once payment clears.
+      </p>
       <button
         type="button"
         className="mt-2 w-full py-1 text-xs text-muted-foreground hover:text-foreground"
@@ -251,9 +254,6 @@ export function BuyFlow({
       >
         Cancel
       </button>
-      <p className="mt-2 text-center text-xs text-muted-foreground">
-        Payment is completed securely on HitPay.
-      </p>
     </form>
   )
 }

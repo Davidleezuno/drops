@@ -151,7 +151,7 @@ export function DropStorefront({
 
       {windowClosed ? (
         <Poster variant="ended" title="This drop has ended" className="flex-1">
-          The window has closed. Follow {drop.seller_name} for the next one.
+          The window closed. Follow {drop.seller_name} for the next one.
         </Poster>
       ) : allSoldOut ? (
         <Poster
@@ -182,7 +182,7 @@ export function DropStorefront({
 
           <section className="mt-8">
             <h2 className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-              Getting it
+              How you get it
             </h2>
             <ul className="mt-3 flex flex-col gap-2.5 text-sm">
               {(drop.fulfilment === 'delivery' || drop.fulfilment === 'both') && (

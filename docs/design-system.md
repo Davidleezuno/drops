@@ -45,11 +45,12 @@ Reserved for real events; everything else stays still.
 | Component | What it is | Notes |
 |---|---|---|
 | `Shell` | Page container | `width="drop"` (mobile buyer, max-w-md) or `"console"` (seller, max-w-3xl) |
-| `DropHeader` | Seller-as-hero header | URL eyebrow (`drops.sg/{seller}/{slug}`), Fraunces name; pills go in children |
+| `DropHeader` | Seller-as-hero header | URL eyebrow (`{siteHost()}/{seller}/{slug}`), Fraunces name; pills go in children |
 | `LivePill` | Ink pill + breathing green dot | Wraps `Countdown` on time-bound drops; omit entirely on open-ended drops |
 | `Price` | SGD amount | Mono, tabular; formatter is `sgd` in `lib/format.ts` |
 | `StockBadge` | Scarcity ladder | `plenty` (quiet mono text) → `low` (amber pill, ≤3) → `soldout` (ink pill). Exposes `stockState()` + `LOW_STOCK_THRESHOLD` |
 | `ProductRow` | One product in a drop | Sold-out rows recede (opacity), never disappear |
+| `DraftItemCard` | One item in the builder's draft | Editor *and* preview in one card — the seller never checks the same item twice. Owns the `ProductDraft` type |
 | `StatusPill` | Order status | `PENDING` (quiet) / `PAID` (green) / `PAID_LATE` (solid alarm) — for console + order status pages |
 | `Poster` | Terminal states as compositions | `sold-out` (ink, stamp tilt) / `ended` (quiet card) / `paid` (green tint) |
 
@@ -59,7 +60,14 @@ Reserved for real events; everything else stays still.
 - **03 Realtime counter:** `StockBadge` with `key={remaining}` + `animate-tick`; page-level flip to the `sold-out` Poster when everything's gone. The projector is the same page — sizes already assume it.
 - **04 Order status:** "Confirming payment…" = quiet card + shadcn `Skeleton` pulse (active, not broken); resolve to `Poster variant="paid"`; PAID_LATE buyer view uses `alarm-soft` card, honest copy.
 - **05 Console:** `Shell width="console"`, shadcn `Table` (add via CLI when needed) + `StatusPill`; PAID_LATE rows pinned top. Calm register throughout — no flame except actions.
-- **06 Builder:** shadcn form primitives; extracted rows editable inline; success screen presents the link + QR like a ticket (mono URL, flame slug, worth screenshotting).
+- **06 Builder:** two steps, not four sections — *photos + name* → *check the draft* → live. Items edit in place via `DraftItemCard`; the selling window is preset chips (2h / 6h / 24h) with a datetime fallback; publish lives in a sticky bar so it's always one tap away. Success screen presents the link + QR like a ticket (mono URL, flame slug, worth screenshotting).
+
+## Copy rules
+
+- Buttons name the outcome (`Publish drop`, `Share link`, `Continue to payment`), never `Continue` or `Submit`.
+- Errors say what happened and what to do next — `We could not find any items with prices in those photos. Try a clearer photo, or add items by hand.`
+- Never print a hardcoded host. `siteHost()` in `lib/format.ts` reads the deploy origin so a displayed link always matches the link that gets copied.
+- Money and irreversibility get stated before the action, not after: the console link warns it's the only way back; checkout says where the buyer is going and when the order counts as confirmed.
 
 ## Adding primitives
 

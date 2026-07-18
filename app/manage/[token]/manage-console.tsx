@@ -34,6 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { siteHost } from '@/lib/format'
 import { createClient } from '@/lib/supabase/client'
 import type { ManageOrder, ManageSnapshot, Product } from '@/lib/types'
 
@@ -261,7 +262,7 @@ export function ManageConsole({
 
   async function endDropNow() {
     const confirmed = window.confirm(
-      'End this drop now? Buyers will no longer be able to start checkout.',
+      'End this drop now?\n\nThe link stops selling immediately. Orders already paid for are unaffected.',
     )
     if (!confirmed) return
 
@@ -288,7 +289,7 @@ export function ManageConsole({
   )
   const packingItems = buildPackingList(paidOrders)
   const totalUnits = paidOrders.reduce((total, order) => total + order.qty, 0)
-  const publicPath = `drops.sg/${snapshot.drop.seller_slug}/${snapshot.drop.drop_slug}`
+  const publicPath = `${siteHost()}/${snapshot.drop.seller_slug}/${snapshot.drop.drop_slug}`
 
   return (
     <>
@@ -451,14 +452,16 @@ export function ManageConsole({
         <section aria-labelledby="settlement-title" className="mb-8">
           <div className="mb-4">
             <p className="font-mono text-xs tracking-widest text-live uppercase">
-              Zero matching left
+              Drop settled
             </p>
             <h2 id="settlement-title" className="mt-1 font-display text-3xl">
               Ready to fulfil
             </h2>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
-              {paidOrders.length} paid orders · {totalUnits} units. Paid-late
-              orders stay in the refund queue above and are never packed.
+              {paidOrders.length}{' '}
+              {paidOrders.length === 1 ? 'paid order' : 'paid orders'} ·{' '}
+              {totalUnits} {totalUnits === 1 ? 'unit' : 'units'}. Every payment
+              is already matched to an order — nothing to reconcile by hand.
             </p>
           </div>
 
@@ -535,10 +538,10 @@ export function ManageConsole({
         <div className="mb-3 flex items-end justify-between gap-3">
           <div>
             <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-              {snapshot.settled ? 'Audit trail' : 'Live feed'}
+              {snapshot.settled ? 'Final' : 'Live'}
             </p>
             <h2 id="orders-title" className="mt-1 font-display text-2xl">
-              {snapshot.settled ? 'All orders' : 'Orders as they land'}
+              All orders
             </h2>
           </div>
           <span className="font-mono text-xs text-muted-foreground">

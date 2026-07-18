@@ -1,3 +1,4 @@
+import { siteHost } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 /**
@@ -21,7 +22,8 @@ export function DropHeader({
   return (
     <header className={cn("flex flex-col items-start", className)}>
       <p className="font-mono text-xs text-muted-foreground">
-        drops.sg/{sellerSlug}/<span className="text-primary">{dropSlug}</span>
+        {siteHost()}/{sellerSlug}/
+        <span className="text-primary">{dropSlug}</span>
       </p>
       <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-balance">
         {sellerName}

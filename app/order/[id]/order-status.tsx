@@ -92,7 +92,7 @@ export function OrderStatus({ order }: { order: BuyerOrder }) {
     <>
       <header className="mb-8">
         <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-          Drops receipt
+          Your order from
         </p>
         <h1 className="mt-2 font-display text-4xl leading-tight font-semibold tracking-tight">
           {order.sellerName}
@@ -106,15 +106,15 @@ export function OrderStatus({ order }: { order: BuyerOrder }) {
               <Skeleton className="mb-3 size-12 rounded-full" />
               <CardTitle className="text-xl">Confirming payment…</CardTitle>
               <CardDescription className="max-w-xs leading-relaxed">
-                We&rsquo;re checking with HitPay. Keep this page open—payment is
-                only confirmed after HitPay verifies it.
+                Keep this page open. We&rsquo;ll confirm the moment HitPay does
+                — usually a few seconds.
               </CardDescription>
             </CardHeader>
             {waitingLonger && (
               <CardContent>
                 <p className="text-center text-xs leading-relaxed text-muted-foreground">
-                  This is taking a little longer than usual. We&rsquo;re still
-                  checking automatically.
+                  Still checking — this sometimes takes a minute. Your payment
+                  is safe; nothing needs doing on your end.
                 </p>
               </CardContent>
             )}
@@ -123,7 +123,7 @@ export function OrderStatus({ order }: { order: BuyerOrder }) {
 
         {status === 'PAID' && (
           <Poster variant="paid" title="Paid ✓" className="py-12">
-            Payment confirmed. Your order is with {order.sellerName}.
+            {order.sellerName} has your order. Keep this page for your records.
           </Poster>
         )}
 
@@ -137,8 +137,9 @@ export function OrderStatus({ order }: { order: BuyerOrder }) {
                 The drop sold out first
               </CardTitle>
               <CardDescription className="leading-relaxed text-foreground/70">
-                Your payment arrived after the last item sold. The seller will
-                refund this payment through HitPay.
+                Your payment landed after the last item was claimed, so there
+                is nothing to fulfil. {order.sellerName} will refund you in
+                full through HitPay.
               </CardDescription>
             </CardHeader>
           </Card>

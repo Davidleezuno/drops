@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+export { slugify } from '@/lib/format'
+
 export const extractedMenuSchema = z.object({
   products: z
     .array(
@@ -37,15 +39,3 @@ export const createDropSchema = z.object({
 export type ExtractedMenu = z.infer<typeof extractedMenuSchema>
 export type CreateDropInput = z.infer<typeof createDropSchema>
 
-export function slugify(value: string, fallback: string) {
-  const slug = value
-    .normalize('NFKD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 64)
-
-  return slug || fallback
-}

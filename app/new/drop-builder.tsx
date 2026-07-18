@@ -9,8 +9,8 @@ import {
   Copy,
   ImagePlus,
   LoaderCircle,
-  LockKeyhole,
   Maximize2,
+  Pencil,
   Plus,
   Share2,
   Sparkles,
@@ -18,11 +18,7 @@ import {
 } from 'lucide-react'
 import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react'
 
-import {
-  ExtractedProductRow,
-  type ProductDraft,
-} from '@/components/ds/extracted-product-row'
-import { StorefrontDraftPreview } from '@/components/ds/storefront-draft-preview'
+import { DraftItemCard, type ProductDraft } from '@/components/ds/draft-item-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { siteHost, slugify } from '@/lib/format'
 
 type Fulfilment = 'pickup' | 'delivery' | 'both'
 type Phase = 'upload' | 'review' | 'success'
@@ -48,6 +45,25 @@ type PublishedDrop = {
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024
 const MAX_IMAGE_COUNT = 5
 const COMPRESSION_THRESHOLD_BYTES = 3 * 1024 * 1024
+
+const WINDOW_PRESETS = [
+  { hours: 2, label: '2 hours' },
+  { hours: 6, label: '6 hours' },
+  { hours: 24, label: '24 hours' },
+] as const
+
+const FULFILMENT_LABELS: Record<Fulfilment, string> = {
+  pickup: 'Pickup only',
+  delivery: 'Delivery only',
+  both: 'Buyer chooses',
+}
+
+const closingTime = new Intl.DateTimeFormat('en-SG', {
+  weekday: 'short',
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+})
 
 type SelectedImage = {
   id: string
@@ -73,6 +89,10 @@ function newProduct(product?: {
 function localDateTimeValue(date: Date) {
   const localTime = new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
   return localTime.toISOString().slice(0, 16)
+}
+
+function hoursFromNow(hours: number) {
+  return localDateTimeValue(new Date(Date.now() + hours * 60 * 60 * 1000))
 }
 
 async function prepareImage(file: File, maxBytes = MAX_UPLOAD_BYTES) {
@@ -112,10 +132,20 @@ async function prepareImage(file: File, maxBytes = MAX_UPLOAD_BYTES) {
   }
 
   if (file.size <= maxBytes) return file
-  throw new Error('One of those photos is too large to prepare. Try a smaller image.')
+  throw new Error('That photo is too large. Try one under 4 MB.')
 }
 
-function CopyButton({ value, label }: { value: string; label: string }) {
+function CopyButton({
+  value,
+  label,
+  variant = 'outline',
+  className,
+}: {
+  value: string
+  label: string
+  variant?: 'outline' | 'secondary'
+  className?: string
+}) {
   const [copied, setCopied] = useState(false)
 
   async function copy() {
@@ -125,7 +155,7 @@ function CopyButton({ value, label }: { value: string; label: string }) {
   }
 
   return (
-    <Button type="button" variant="outline" onClick={copy}>
+    <Button type="button" variant={variant} className={className} onClick={copy}>
       {copied ? <Check /> : <Copy />}
       {copied ? 'Copied' : label}
     </Button>
@@ -133,15 +163,16 @@ function CopyButton({ value, label }: { value: string; label: string }) {
 }
 
 export function DropBuilder() {
+  const host = siteHost()
   const [phase, setPhase] = useState<Phase>('upload')
   const [sellerName, setSellerName] = useState('')
   const [dropSlug, setDropSlug] = useState('tonight')
+  const [editingSlug, setEditingSlug] = useState(false)
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([])
   const [dragActive, setDragActive] = useState(false)
   const [products, setProducts] = useState<ProductDraft[]>([])
-  const [windowEndsAt, setWindowEndsAt] = useState(() =>
-    localDateTimeValue(new Date(Date.now() + 2 * 60 * 60 * 1000)),
-  )
+  const [windowEndsAt, setWindowEndsAt] = useState(() => hoursFromNow(2))
+  const [windowPreset, setWindowPreset] = useState<number | null>(2)
   const [fulfilment, setFulfilment] = useState<Fulfilment>('pickup')
   const [deliveryFee, setDeliveryFee] = useState('5')
   const [pickupNote, setPickupNote] = useState('')
@@ -154,6 +185,9 @@ export function DropBuilder() {
   const [productShotErrors, setProductShotErrors] = useState<
     Record<string, string>
   >({})
+
+  const sellerSlug = slugify(sellerName, 'your-name')
+  const cleanDropSlug = slugify(dropSlug, 'tonight')
 
   const imagePreviews = useMemo(
     () =>
@@ -212,7 +246,7 @@ export function DropBuilder() {
     if (images.length !== files.length) {
       setError('Only image files can be added.')
     } else if (uniqueImages.length > availableSlots) {
-      setError(`Add up to ${MAX_IMAGE_COUNT} photos at a time.`)
+      setError(`You can use up to ${MAX_IMAGE_COUNT} photos.`)
     } else {
       setError(null)
     }
@@ -328,7 +362,7 @@ export function DropBuilder() {
         error?: string
       }
       if (!response.ok || !result.imageUrl) {
-        throw new Error(result.error || 'That product shot could not be improved.')
+        throw new Error(result.error || 'That photo could not be generated.')
       }
 
       updateProductImage(product.id, result.imageUrl, 'generated')
@@ -337,7 +371,7 @@ export function DropBuilder() {
         product.id,
         caught instanceof Error
           ? caught.message
-          : 'That product shot could not be improved.',
+          : 'That photo could not be generated.',
       )
     } finally {
       setProductShotBusy(product.id, false)
@@ -397,7 +431,10 @@ export function DropBuilder() {
       }
 
       if (!response.ok || !result.products?.length) {
-        throw new Error(result.error || 'No products were found in that image.')
+        throw new Error(
+          result.error ||
+            'We could not find any items with prices in those photos. Try a clearer photo, or add items by hand.',
+        )
       }
 
       setProducts(result.products.map((product) => newProduct(product)))
@@ -406,7 +443,7 @@ export function DropBuilder() {
       setError(
         caught instanceof Error
           ? caught.message
-          : 'We could not read that image. Please try again.',
+          : 'We could not read those photos. Try again, or add items by hand.',
       )
     } finally {
       setExtracting(false)
@@ -461,6 +498,22 @@ export function DropBuilder() {
   }
 
   if (phase === 'success' && published) {
+    // Show the host the seller will actually share, not a hardcoded one.
+    const publishedHost = (() => {
+      try {
+        return new URL(published.buyerUrl).host
+      } catch {
+        return host
+      }
+    })()
+    const managePath = (() => {
+      try {
+        return new URL(published.manageUrl).pathname
+      } catch {
+        return published.manageUrl
+      }
+    })()
+
     return (
       <section className="animate-rise flex flex-1 flex-col">
         {projectingQr && (
@@ -468,7 +521,7 @@ export function DropBuilder() {
             className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background p-5"
             role="dialog"
             aria-modal="true"
-            aria-label="Project buyer QR code"
+            aria-label="Buyer QR code, full screen"
           >
             <Button
               type="button"
@@ -480,7 +533,7 @@ export function DropBuilder() {
               Close
             </Button>
             <p className="font-mono text-sm tracking-widest text-live uppercase">
-              Scan to join the drop
+              Scan to buy
             </p>
             <div className="mt-5 w-[min(76vh,82vw)] max-w-3xl rounded-3xl bg-white p-4 shadow-lg">
               <Image
@@ -494,7 +547,7 @@ export function DropBuilder() {
               />
             </div>
             <p className="mt-5 max-w-[90vw] font-mono text-xl break-all sm:text-3xl">
-              drops.sg/{published.sellerSlug}/
+              {publishedHost}/{published.sellerSlug}/
               <span className="text-primary">{published.dropSlug}</span>
             </p>
           </div>
@@ -502,18 +555,18 @@ export function DropBuilder() {
 
         <header className="text-center">
           <p className="font-mono text-xs tracking-widest text-live uppercase">
-            Your drop is live
+            Live now
           </p>
           <h1 className="mt-3 font-display text-5xl font-semibold tracking-tight text-balance">
-            Ready to share.
+            Your drop is live.
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
-            Put this QR on screen or send the link wherever your people are.
+            Send the link, or put the QR on screen.
           </p>
         </header>
 
         <div className="mt-8 rounded-2xl border border-border bg-card p-5 text-center shadow-sm">
-          <div className="mx-auto w-full max-w-80 rounded-xl bg-white p-3">
+          <div className="mx-auto w-full max-w-72 rounded-xl bg-white p-3">
             <Image
               src={published.qrDataUrl}
               alt={`QR code for ${published.buyerUrl}`}
@@ -523,62 +576,70 @@ export function DropBuilder() {
               priority
             />
           </div>
-          <p className="mt-5 font-mono text-sm break-all">
-            drops.sg/{published.sellerSlug}/
+          <p className="mt-5 font-mono text-xs break-all sm:text-sm">
+            {publishedHost}/{published.sellerSlug}/
             <span className="text-primary">{published.dropSlug}</span>
           </p>
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            <CopyButton value={published.buyerUrl} label="Copy buyer link" />
+          <Button
+            type="button"
+            size="lg"
+            className="mt-4 h-12 w-full"
+            onClick={shareBuyerLink}
+          >
+            <Share2 />
+            Share link
+          </Button>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <CopyButton value={published.buyerUrl} label="Copy link" />
             <Button
               type="button"
               variant="outline"
               onClick={() => setProjectingQr(true)}
             >
               <Maximize2 />
-              Project QR
-            </Button>
-            <Button
-              type="button"
-              onClick={shareBuyerLink}
-            >
-              <Share2 />
-              Share
+              Full-screen QR
             </Button>
           </div>
         </div>
 
-        <div className="mt-4 rounded-xl bg-muted p-4">
-          <div className="flex items-start gap-3">
-            <LockKeyhole className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold">Seller console</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                Keep this private. Anyone with this link can manage and settle
-                your drop.
-              </p>
-              <p className="mt-3 truncate font-mono text-xs text-muted-foreground">
-                {published.manageUrl}
-              </p>
-              <div className="mt-3">
-                <CopyButton
-                  value={published.manageUrl}
-                  label="Copy private link"
-                />
-              </div>
-            </div>
+        <div className="mt-4 rounded-2xl border border-border bg-muted p-4">
+          <p className="text-sm font-semibold">Your orders live here</p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            Save this link — it&rsquo;s the only way back to your orders, and
+            anyone who has it can manage your drop.
+          </p>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              nativeButton={false}
+              render={<Link href={managePath} />}
+            >
+              Open console
+            </Button>
+            <CopyButton value={published.manageUrl} label="Copy" />
           </div>
         </div>
 
         <div className="mt-8 flex flex-col gap-2">
           <Button
             size="lg"
-            className="w-full"
-            render={<Link href={`/${published.sellerSlug}/${published.dropSlug}`} />}
+            variant="outline"
+            className="h-12 w-full"
+            nativeButton={false}
+            render={
+              <Link href={`/${published.sellerSlug}/${published.dropSlug}`} />
+            }
           >
-            Open storefront
+            See what buyers see
             <ArrowRight />
           </Button>
-          <Button size="lg" variant="ghost" render={<Link href="/new" />}>
+          <Button
+            size="lg"
+            variant="ghost"
+            nativeButton={false}
+            render={<Link href="/new" />}
+          >
             Create another drop
           </Button>
         </div>
@@ -587,6 +648,11 @@ export function DropBuilder() {
   }
 
   if (phase === 'review') {
+    const closesAt = new Date(windowEndsAt)
+    const closesLabel = Number.isNaN(closesAt.getTime())
+      ? 'Pick a closing time'
+      : `Closes ${closingTime.format(closesAt)}`
+
     return (
       <form className="flex flex-1 flex-col" onSubmit={publish}>
         <header>
@@ -599,80 +665,44 @@ export function DropBuilder() {
             }}
           >
             <ArrowLeft className="size-4" />
-            Change photo
+            Back to photos
           </button>
-          <p className="mt-7 font-mono text-xs text-muted-foreground">
-            drops.sg/{sellerName.toLowerCase().replace(/\s+/g, '-')}/
-            <span className="text-primary">{dropSlug}</span>
+          <p className="mt-7 font-mono text-xs break-all text-muted-foreground">
+            {host}/{sellerSlug}/
+            <span className="text-primary">{cleanDropSlug}</span>
           </p>
           <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight">
-            AI drafted it. You confirm it.
+            Check the draft.
           </h1>
           <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-            Fix anything we misread, then make three decisions before you go
-            live.
+            {selectedImages.length
+              ? `We read ${products.length} ${products.length === 1 ? 'item' : 'items'} from your photos. Fix anything wrong — this is what buyers will see.`
+              : 'Add each item, price and how many you have. This is what buyers will see.'}
           </p>
         </header>
 
-        <section className="mt-9">
-          <div className="mb-4">
-            <p className="font-mono text-xs tracking-widest text-primary uppercase">
-              1 · Preview
-            </p>
-            <h2 className="mt-1 font-display text-2xl font-semibold">
-              See what buyers will see
-            </h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Product photos are optional. Add your own or use AI to turn a rough
-              reference into a clean storefront shot.
-            </p>
-          </div>
-          <StorefrontDraftPreview
-            sellerName={sellerName}
-            dropSlug={dropSlug}
-            products={products}
-            busyProductIds={busyProductIds}
-            errors={productShotErrors}
-            onImprove={improveProductShot}
-            onUpload={uploadProductShot}
-          />
-        </section>
-
-        <section className="mt-9 border-t border-border pt-8">
-          <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
-              <p className="font-mono text-xs tracking-widest text-primary uppercase">
-                2 · Stock
-              </p>
-              <h2 className="mt-1 font-display text-2xl font-semibold">
-                What&rsquo;s available
-              </h2>
-            </div>
-            <p className="text-right text-xs text-muted-foreground">
-              {products.length} {products.length === 1 ? 'item' : 'items'}
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {products.map((product, index) => (
-              <ExtractedProductRow
-                key={product.id}
-                index={index}
-                product={product}
-                canRemove={products.length > 1}
-                onChange={updateProduct}
-                onRemove={() =>
-                  setProducts((current) =>
-                    current.filter((item) => item.id !== product.id),
-                  )
-                }
-              />
-            ))}
-          </div>
+        <section className="mt-8 space-y-3">
+          {products.map((product) => (
+            <DraftItemCard
+              key={product.id}
+              product={product}
+              canRemove={products.length > 1}
+              busy={busyProductIds.includes(product.id)}
+              error={productShotErrors[product.id]}
+              onChange={updateProduct}
+              onRemove={() =>
+                setProducts((current) =>
+                  current.filter((item) => item.id !== product.id),
+                )
+              }
+              onUpload={uploadProductShot}
+              onImprove={improveProductShot}
+            />
+          ))}
           <Button
             type="button"
             variant="outline"
-            className="mt-3 w-full"
+            className="w-full"
             onClick={() => setProducts((current) => [...current, newProduct()])}
           >
             <Plus />
@@ -681,49 +711,81 @@ export function DropBuilder() {
         </section>
 
         <section className="mt-9 border-t border-border pt-8">
-          <p className="font-mono text-xs tracking-widest text-primary uppercase">
-            3 · Window
+          <h2 className="font-display text-2xl font-semibold">Selling window</h2>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Buyers see a countdown. The link stops selling when it hits zero.
           </p>
-          <h2 className="mt-1 font-display text-2xl font-semibold">
-            When does it end?
-          </h2>
-          <div className="mt-4 space-y-1.5">
-            <Label htmlFor="window-end">Closing time</Label>
-            <Input
-              id="window-end"
-              className="font-mono tabular-nums"
-              type="datetime-local"
-              value={windowEndsAt}
-              min={localDateTimeValue(new Date())}
-              required
-              onChange={(event) => setWindowEndsAt(event.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Buyers see a live countdown until this time.
-            </p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {WINDOW_PRESETS.map((preset) => (
+              <Button
+                key={preset.hours}
+                type="button"
+                variant={windowPreset === preset.hours ? 'default' : 'outline'}
+                aria-pressed={windowPreset === preset.hours}
+                onClick={() => {
+                  setWindowPreset(preset.hours)
+                  setWindowEndsAt(hoursFromNow(preset.hours))
+                }}
+              >
+                {preset.label}
+              </Button>
+            ))}
+            <Button
+              type="button"
+              variant={windowPreset === null ? 'default' : 'outline'}
+              aria-pressed={windowPreset === null}
+              onClick={() => setWindowPreset(null)}
+            >
+              <Pencil />
+              Pick a time
+            </Button>
           </div>
+
+          {windowPreset === null ? (
+            <div className="mt-3 space-y-1.5">
+              <Label htmlFor="window-end">Closing time</Label>
+              <Input
+                id="window-end"
+                className="font-mono tabular-nums"
+                type="datetime-local"
+                value={windowEndsAt}
+                min={localDateTimeValue(new Date())}
+                required
+                onChange={(event) => setWindowEndsAt(event.target.value)}
+              />
+            </div>
+          ) : (
+            <p className="mt-3 font-mono text-sm text-muted-foreground tabular-nums">
+              {closesLabel}
+            </p>
+          )}
         </section>
 
         <section className="mt-9 border-t border-border pt-8">
-          <p className="font-mono text-xs tracking-widest text-primary uppercase">
-            4 · Fulfilment
-          </p>
-          <h2 className="mt-1 font-display text-2xl font-semibold">
-            How will buyers get it?
+          <h2 className="font-display text-2xl font-semibold">
+            How buyers get it
           </h2>
+
           <div className="mt-4 space-y-1.5">
-            <Label htmlFor="fulfilment">Method</Label>
+            <Label htmlFor="fulfilment">Pickup or delivery</Label>
             <Select
               value={fulfilment}
               onValueChange={(value) => setFulfilment(value as Fulfilment)}
             >
               <SelectTrigger id="fulfilment" className="w-full">
-                <SelectValue />
+                <SelectValue>
+                  {(value: Fulfilment) => FULFILMENT_LABELS[value]}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pickup">Pickup</SelectItem>
-                <SelectItem value="delivery">Delivery</SelectItem>
-                <SelectItem value="both">Pickup or delivery</SelectItem>
+                <SelectItem value="pickup">
+                  {FULFILMENT_LABELS.pickup}
+                </SelectItem>
+                <SelectItem value="delivery">
+                  {FULFILMENT_LABELS.delivery}
+                </SelectItem>
+                <SelectItem value="both">{FULFILMENT_LABELS.both}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -742,6 +804,9 @@ export function DropBuilder() {
                 required
                 onChange={(event) => setDeliveryFee(event.target.value)}
               />
+              <p className="text-xs text-muted-foreground">
+                Added to the buyer&rsquo;s total at checkout.
+              </p>
             </div>
           )}
 
@@ -762,30 +827,35 @@ export function DropBuilder() {
           )}
         </section>
 
-        {error && (
-          <p className="mt-6 text-sm text-destructive" role="alert">
-            {error}
-          </p>
-        )}
-
-        <Button
-          type="submit"
-          size="lg"
-          className="mt-8 w-full"
-          disabled={publishing || busyProductIds.length > 0}
-        >
-          {publishing ? (
-            <>
-              <LoaderCircle className="animate-spin" />
-              Publishing your drop…
-            </>
-          ) : (
-            <>
-              Publish drop
-              <ArrowRight />
-            </>
+        <div className="sticky bottom-0 -mx-5 -mb-16 mt-9 border-t border-border bg-background/85 px-5 pt-3 pb-6 backdrop-blur">
+          {error && (
+            <p className="mb-3 text-sm text-destructive" role="alert">
+              {error}
+            </p>
           )}
-        </Button>
+          <Button
+            type="submit"
+            size="lg"
+            className="h-12 w-full"
+            disabled={publishing || busyProductIds.length > 0}
+          >
+            {publishing ? (
+              <>
+                <LoaderCircle className="animate-spin" />
+                Publishing…
+              </>
+            ) : (
+              <>
+                Publish drop
+                <ArrowRight />
+              </>
+            )}
+          </Button>
+          <p className="mt-2 text-center font-mono text-xs text-muted-foreground tabular-nums">
+            {products.length} {products.length === 1 ? 'item' : 'items'} ·{' '}
+            {closesLabel}
+          </p>
+        </div>
       </form>
     )
   }
@@ -793,56 +863,22 @@ export function DropBuilder() {
   return (
     <form className="flex flex-1 flex-col" onSubmit={extract}>
       <header>
-        <p className="font-mono text-xs tracking-widest text-primary uppercase">
-          drops.sg/new
+        <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
+          Step 1 of 2
         </p>
-        <h1 className="mt-3 font-display text-5xl leading-[1.02] font-semibold tracking-tight text-balance">
-          Your next drop starts with a photo.
+        <h1 className="mt-3 font-display text-4xl leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl">
+          Turn a photo into a storefront.
         </h1>
-        <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-          Upload the menu or product sheets you already share. We&rsquo;ll read
-          them together and turn every listing into an editable storefront
-          draft.
+        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+          Upload the menu photos you already send customers. We&rsquo;ll read
+          the items and prices — you check them next.
         </p>
       </header>
 
       <section className="mt-8 space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="seller-name">Your selling name</Label>
-          <Input
-            id="seller-name"
-            value={sellerName}
-            autoComplete="organization"
-            maxLength={80}
-            placeholder="e.g. Roti Wife"
-            required
-            onChange={(event) => setSellerName(event.target.value)}
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <Label htmlFor="drop-slug">Link ending</Label>
-          <div className="flex items-center rounded-lg border border-input bg-background focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50">
-            <span className="shrink-0 pl-2.5 font-mono text-xs text-muted-foreground">
-              /
-            </span>
-            <Input
-              id="drop-slug"
-              className="border-0 font-mono shadow-none focus-visible:ring-0"
-              value={dropSlug}
-              maxLength={64}
-              required
-              onChange={(event) => setDropSlug(event.target.value)}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            We&rsquo;ll clean this up for the final URL.
-          </p>
-        </div>
-
-        <div className="space-y-1.5">
           <div className="flex items-baseline justify-between gap-3">
-            <Label htmlFor="menu-photo">Menu or product photos</Label>
+            <Label htmlFor="menu-photo">Your photos</Label>
             <span className="font-mono text-[11px] text-muted-foreground">
               {selectedImages.length}/{MAX_IMAGE_COUNT}
             </span>
@@ -861,7 +897,7 @@ export function DropBuilder() {
           <label
             htmlFor="menu-photo"
             className={`group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed bg-card text-center transition-all hover:border-primary/50 focus-within:border-ring ${
-              selectedImages.length ? 'min-h-32' : 'min-h-56'
+              selectedImages.length ? 'min-h-28' : 'min-h-52'
             } ${
               dragActive
                 ? 'border-primary bg-accent/60 ring-3 ring-primary/15'
@@ -884,40 +920,36 @@ export function DropBuilder() {
             </span>
             <span className="mt-3 text-sm font-semibold">
               {dragActive
-                ? 'Drop photos here'
+                ? 'Drop them here'
                 : selectedImages.length
-                  ? 'Add more photos'
-                  : 'Choose or drop photos'}
+                  ? 'Add another photo'
+                  : 'Choose photos'}
             </span>
             <span className="mt-1 max-w-64 text-xs leading-relaxed text-muted-foreground">
-              Up to {MAX_IMAGE_COUNT} images. We&rsquo;ll combine the listings and
-              remove obvious duplicates.
+              Menu cards, price lists or product shots. Up to {MAX_IMAGE_COUNT}.
             </span>
           </label>
 
           {imagePreviews.length > 0 && (
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="grid grid-cols-3 gap-2 pt-1">
               {imagePreviews.map((image, index) => (
                 <div
                   key={image.id}
-                  className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-border bg-muted"
+                  className="group relative aspect-square overflow-hidden rounded-xl border border-border bg-muted"
                 >
                   <Image
                     src={image.url}
-                    alt={`Selected menu ${index + 1}`}
+                    alt={`Photo ${index + 1}`}
                     fill
                     className="object-cover"
-                    sizes="(max-width: 448px) 50vw, 216px"
+                    sizes="(max-width: 448px) 33vw, 144px"
                     unoptimized
                   />
-                  <span className="absolute bottom-2 left-2 rounded-md bg-foreground/80 px-2 py-1 font-mono text-[10px] text-background backdrop-blur-sm">
-                    {String(index + 1).padStart(2, '0')}
-                  </span>
                   <Button
                     type="button"
                     size="icon-sm"
                     variant="secondary"
-                    className="absolute top-2 right-2 rounded-full bg-background/90 shadow-sm backdrop-blur-sm"
+                    className="absolute top-1.5 right-1.5 rounded-full bg-background/90 shadow-sm backdrop-blur-sm"
                     aria-label={`Remove photo ${index + 1}`}
                     onClick={() => {
                       setSelectedImages((current) =>
@@ -933,6 +965,52 @@ export function DropBuilder() {
             </div>
           )}
         </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="seller-name">Your selling name</Label>
+          <Input
+            id="seller-name"
+            value={sellerName}
+            autoComplete="organization"
+            maxLength={80}
+            placeholder="e.g. Roti Wife"
+            required
+            onChange={(event) => setSellerName(event.target.value)}
+          />
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 pt-0.5">
+            <p className="font-mono text-xs text-muted-foreground">
+              {host}/{sellerSlug}/
+              <span className="text-primary">{cleanDropSlug}</span>
+            </p>
+            {!editingSlug && (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
+                onClick={() => setEditingSlug(true)}
+              >
+                Edit link
+              </button>
+            )}
+          </div>
+        </div>
+
+        {editingSlug && (
+          <div className="space-y-1.5">
+            <Label htmlFor="drop-slug">Link ending</Label>
+            <Input
+              id="drop-slug"
+              className="font-mono"
+              value={dropSlug}
+              maxLength={64}
+              placeholder="tonight"
+              required
+              onChange={(event) => setDropSlug(event.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Name this drop: tonight, weekend-bake, live-sale.
+            </p>
+          </div>
+        )}
       </section>
 
       {error && (
@@ -944,18 +1022,18 @@ export function DropBuilder() {
       <Button
         type="submit"
         size="lg"
-        className="mt-6 w-full"
+        className="mt-6 h-12 w-full"
         disabled={!selectedImages.length || extracting}
       >
         {extracting ? (
           <>
             <LoaderCircle className="animate-spin" />
-            Reading your menu…
+            Reading your photos…
           </>
         ) : (
           <>
             <Sparkles />
-            Draft my drop
+            Read my photos
           </>
         )}
       </Button>
@@ -964,14 +1042,14 @@ export function DropBuilder() {
         size="lg"
         variant="ghost"
         className="mt-1 w-full"
-        disabled={!sellerName.trim() || !dropSlug.trim()}
+        disabled={!sellerName.trim()}
         onClick={() => {
           setProducts([newProduct()])
           setPhase('review')
           setError(null)
         }}
       >
-        Enter items manually
+        Add items by hand instead
       </Button>
     </form>
   )
