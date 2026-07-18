@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { createHash, createHmac } from 'node:crypto'
 
 import { createServiceClient } from '@/lib/db'
 import { parseHitPayCompletedEvent } from '@/lib/hitpay'
@@ -20,6 +21,38 @@ export async function POST(request: Request) {
   const signature = request.headers.get('hitpay-signature')
 
   if (!verifyHitPaySignature(rawBody, signature, salt)) {
+    const normalizedSignature = signature?.trim() ?? ''
+    const expectedSignature = createHmac('sha256', salt)
+      .update(rawBody)
+      .digest('hex')
+
+    console.warn(
+      JSON.stringify({
+        tag: '[DEBUG-hitpay-signature]',
+        signatureLength: normalizedSignature.length,
+        signatureEncoding: /^[0-9a-f]+$/i.test(normalizedSignature)
+          ? 'hex'
+          : /^[A-Za-z0-9+/]+={0,2}$/.test(normalizedSignature)
+            ? 'base64'
+            : 'other',
+        signatureSample: `${normalizedSignature.slice(0, 8)}…${normalizedSignature.slice(-8)}`,
+        expectedSample: `${expectedSignature.slice(0, 8)}…${expectedSignature.slice(-8)}`,
+        bodyBytes: rawBody.length,
+        bodySha256: createHash('sha256')
+          .update(rawBody)
+          .digest('hex')
+          .slice(0, 16),
+        saltLength: salt.length,
+        saltSha256: createHash('sha256')
+          .update(salt)
+          .digest('hex')
+          .slice(0, 16),
+        contentType: request.headers.get('content-type'),
+        eventType: request.headers.get('hitpay-event-type'),
+        eventObject: request.headers.get('hitpay-event-object'),
+      }),
+    )
+
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
