@@ -49,7 +49,6 @@ export async function createHitPayPaymentRequest(
   body.set('amount', amount)
   body.set('currency', 'SGD')
   body.append('payment_methods[]', 'paynow_online')
-  body.append('payment_methods[]', 'card')
   body.set('reference_number', referenceNumber)
   body.set('purpose', purpose.slice(0, 255))
   body.set('name', buyerName)
