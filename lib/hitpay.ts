@@ -7,6 +7,21 @@ export type HitPayPaymentRequest = {
   url: string
 }
 
+export type HitPayPaymentStatus =
+  | 'pending'
+  | 'completed'
+  | 'failed'
+  | 'expired'
+  | 'canceled'
+  | 'inactive'
+
+export type HitPayPaymentRequestStatus = {
+  id: string
+  referenceNumber: string
+  status: HitPayPaymentStatus
+  payload: Record<string, unknown>
+}
+
 export class HitPayRequestError extends Error {
   readonly status?: number
 
@@ -113,6 +128,90 @@ export async function createHitPayPaymentRequest(
   return {
     id: (payload as Record<string, string>).id,
     url: (payload as Record<string, string>).url,
+  }
+}
+
+export async function getHitPayPaymentRequestStatus(
+  paymentRequestId: string,
+  {
+    apiKey = process.env.HITPAY_API_KEY,
+    fetcher = fetch,
+    endpoint = HITPAY_SANDBOX_URL,
+  }: {
+    apiKey?: string
+    fetcher?: typeof fetch
+    endpoint?: string
+  } = {},
+): Promise<HitPayPaymentRequestStatus> {
+  if (!apiKey) throw new HitPayRequestError('HitPay is not configured')
+  if (!paymentRequestId) {
+    throw new HitPayRequestError('Payment request id is required')
+  }
+
+  let response: Response
+  try {
+    response = await fetcher(
+      `${endpoint}/${encodeURIComponent(paymentRequestId)}`,
+      {
+        headers: { 'X-BUSINESS-API-KEY': apiKey },
+        cache: 'no-store',
+        signal: AbortSignal.timeout(HITPAY_REQUEST_TIMEOUT_MS),
+      },
+    )
+  } catch (error) {
+    const timedOut =
+      error instanceof Error &&
+      (error.name === 'AbortError' || error.name === 'TimeoutError')
+
+    throw new HitPayRequestError(
+      timedOut ? 'HitPay status check timed out' : 'HitPay could not be reached',
+    )
+  }
+
+  let payload: unknown
+  try {
+    payload = await response.json()
+  } catch {
+    throw new HitPayRequestError(
+      'HitPay returned an unreadable status response',
+      response.status,
+    )
+  }
+
+  if (!response.ok) {
+    throw new HitPayRequestError(
+      messageFromHitPay(payload) ?? 'HitPay could not confirm the payment',
+      response.status,
+    )
+  }
+
+  if (!payload || typeof payload !== 'object') {
+    throw new HitPayRequestError('HitPay returned an incomplete payment status')
+  }
+
+  const value = payload as Record<string, unknown>
+  const statuses: HitPayPaymentStatus[] = [
+    'pending',
+    'completed',
+    'failed',
+    'expired',
+    'canceled',
+    'inactive',
+  ]
+
+  if (
+    value.id !== paymentRequestId ||
+    typeof value.reference_number !== 'string' ||
+    !statuses.includes(value.status as HitPayPaymentStatus)
+  ) {
+    throw new HitPayRequestError('HitPay returned an incomplete payment status')
+  }
+
+  return {
+    id: value.id,
+    referenceNumber: value.reference_number,
+    status: value.status as HitPayPaymentStatus,
+    payload: value,
   }
 }
 
