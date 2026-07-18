@@ -19,12 +19,23 @@ export async function POST(request: Request) {
 
   const rawBody = Buffer.from(await request.arrayBuffer())
   const signature = request.headers.get('hitpay-signature')
+  const decodedSalt = Buffer.from(salt, 'base64').toString('utf8')
+  const matchedSaltEncoding = verifyHitPaySignature(rawBody, signature, salt)
+    ? 'dashboard-value'
+    : decodedSalt.startsWith('$2') &&
+        verifyHitPaySignature(rawBody, signature, decodedSalt)
+      ? 'base64-decoded-dashboard-value'
+      : null
 
-  if (!verifyHitPaySignature(rawBody, signature, salt)) {
+  if (!matchedSaltEncoding) {
     const normalizedSignature = signature?.trim() ?? ''
-    const expectedSignature = createHmac('sha256', salt)
-      .update(rawBody)
-      .digest('hex')
+    const expectedSignatures = [salt, decodedSalt]
+      .filter((candidate, index, candidates) =>
+        candidate && candidates.indexOf(candidate) === index,
+      )
+      .map((candidate) =>
+        createHmac('sha256', candidate).update(rawBody).digest('hex'),
+      )
 
     console.warn(
       JSON.stringify({
@@ -36,7 +47,9 @@ export async function POST(request: Request) {
             ? 'base64'
             : 'other',
         signatureSample: `${normalizedSignature.slice(0, 8)}…${normalizedSignature.slice(-8)}`,
-        expectedSample: `${expectedSignature.slice(0, 8)}…${expectedSignature.slice(-8)}`,
+        expectedSamples: expectedSignatures.map(
+          (expected) => `${expected.slice(0, 8)}…${expected.slice(-8)}`,
+        ),
         bodyBytes: rawBody.length,
         bodySha256: createHash('sha256')
           .update(rawBody)
@@ -55,6 +68,13 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
+
+  console.info(
+    JSON.stringify({
+      tag: '[DEBUG-hitpay-salt-match]',
+      matchedSaltEncoding,
+    }),
+  )
 
   let payload: unknown
   try {
