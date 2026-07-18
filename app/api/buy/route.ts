@@ -6,7 +6,7 @@ import {
   createHitPayPaymentRequest,
   HitPayRequestError,
 } from '@/lib/hitpay'
-import { centsToSgd, orderTotalCents } from '@/lib/money'
+import { centsToSgd, orderTotalCents, sgdToCents } from '@/lib/money'
 import type { Drop, Product } from '@/lib/types'
 
 type ProductWithDrop = Product & { drop: Drop }
@@ -86,6 +86,10 @@ export async function POST(request: Request) {
       fulfilment: details.fulfilment,
     }),
   )
+  const deliveryDescription =
+    details.fulfilment === 'delivery'
+      ? ` + S$${centsToSgd(sgdToCents(product.drop.delivery_fee))} delivery`
+      : ''
 
   const { data: order, error: orderError } = await supabase
     .from('orders')
@@ -115,7 +119,7 @@ export async function POST(request: Request) {
     paymentRequest = await createHitPayPaymentRequest({
       amount,
       referenceNumber: order.id,
-      purpose: `${product.drop.seller_name} — ${product.name} ×${details.quantity}`,
+      purpose: `${product.drop.seller_name} — ${product.name} ×${details.quantity}${deliveryDescription}`,
       buyerName: details.buyerName,
       buyerContact: details.buyerContact,
       redirectUrl: `${appUrl}/order/${order.id}`,

@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
   }
 
   const sellerSlug = slugify(input.sellerName, 'seller')
-  const requestedDropSlug = slugify(input.dropSlug, 'tonight')
+  const requestedDropSlug = slugify(input.dropSlug, 'drops')
   const manageToken = randomBytes(32).toString('base64url')
   const supabase = createServiceClient()
   let createdDrop: CreatedDrop | null = null

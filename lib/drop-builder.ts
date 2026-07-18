@@ -9,6 +9,7 @@ export const extractedMenuSchema = z.object({
         name: z.string().min(1).max(120),
         variant: z.string().max(120).nullable(),
         price: z.number().positive().max(100_000),
+        sourceImageIndex: z.number().int().min(0).max(4),
       }),
     )
     .min(1)
@@ -38,4 +39,3 @@ export const createDropSchema = z.object({
 
 export type ExtractedMenu = z.infer<typeof extractedMenuSchema>
 export type CreateDropInput = z.infer<typeof createDropSchema>
-

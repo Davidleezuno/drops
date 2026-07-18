@@ -15,7 +15,7 @@ export type ProductDraft = {
   price: string
   stock: string
   imageUrl: string | null
-  imageSource: 'uploaded' | 'generated' | null
+  imageSource: 'source' | 'uploaded' | 'generated' | null
 }
 
 /**
@@ -73,6 +73,12 @@ export function DraftItemCard({
         {product.imageSource === 'generated' && (
           <span className="absolute top-3 left-3 rounded-full bg-background/90 px-2.5 py-1 font-mono text-[10px] tracking-wider uppercase shadow-sm backdrop-blur-sm">
             AI photo
+          </span>
+        )}
+
+        {product.imageSource === 'source' && (
+          <span className="absolute top-3 left-3 rounded-full bg-background/90 px-2.5 py-1 font-mono text-[10px] tracking-wider uppercase shadow-sm backdrop-blur-sm">
+            Source photo
           </span>
         )}
 

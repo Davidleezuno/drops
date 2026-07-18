@@ -295,7 +295,7 @@ export function ManageConsole({
     <>
       <header className="mb-8">
         <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-          Seller console · keep this link private
+          Store
         </p>
         <div className="mt-2 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>

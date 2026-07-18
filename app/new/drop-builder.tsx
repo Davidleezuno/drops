@@ -10,7 +10,6 @@ import {
   ImagePlus,
   LoaderCircle,
   Maximize2,
-  Pencil,
   Plus,
   Share2,
   Sparkles,
@@ -22,17 +21,12 @@ import { DraftItemCard, type ProductDraft } from '@/components/ds/draft-item-car
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { siteHost, slugify } from '@/lib/format'
+import { cn } from '@/lib/utils'
 
 type Fulfilment = 'pickup' | 'delivery' | 'both'
 type Phase = 'upload' | 'review' | 'success'
+type WindowPreset = 'today' | 'week' | 'month'
 
 type PublishedDrop = {
   buyerUrl: string
@@ -47,19 +41,25 @@ const MAX_IMAGE_COUNT = 5
 const COMPRESSION_THRESHOLD_BYTES = 3 * 1024 * 1024
 
 const WINDOW_PRESETS = [
-  { hours: 2, label: '2 hours' },
-  { hours: 6, label: '6 hours' },
-  { hours: 24, label: '24 hours' },
+  { value: 'today', label: 'Today' },
+  { value: 'week', label: 'This week' },
+  { value: 'month', label: 'This month' },
 ] as const
 
-const FULFILMENT_LABELS: Record<Fulfilment, string> = {
-  pickup: 'Pickup only',
-  delivery: 'Delivery only',
-  both: 'Buyer chooses',
-}
+const FULFILMENT_OPTIONS = [
+  { value: 'pickup', label: 'Pickup', detail: 'Buyers collect' },
+  { value: 'delivery', label: 'Delivery', detail: 'You deliver' },
+  { value: 'both', label: 'Both', detail: 'Buyers choose' },
+] as const satisfies ReadonlyArray<{
+  value: Fulfilment
+  label: string
+  detail: string
+}>
 
 const closingTime = new Intl.DateTimeFormat('en-SG', {
   weekday: 'short',
+  day: 'numeric',
+  month: 'short',
   hour: 'numeric',
   minute: '2-digit',
   hour12: true,
@@ -74,6 +74,7 @@ function newProduct(product?: {
   name: string
   variant: string | null
   price: number
+  sourceImageIndex?: number
 }): ProductDraft {
   return {
     id: crypto.randomUUID(),
@@ -91,8 +92,17 @@ function localDateTimeValue(date: Date) {
   return localTime.toISOString().slice(0, 16)
 }
 
-function hoursFromNow(hours: number) {
-  return localDateTimeValue(new Date(Date.now() + hours * 60 * 60 * 1000))
+function endOfWindow(preset: WindowPreset) {
+  const end = new Date()
+
+  if (preset === 'week') {
+    end.setDate(end.getDate() + ((7 - end.getDay()) % 7))
+  } else if (preset === 'month') {
+    end.setMonth(end.getMonth() + 1, 0)
+  }
+
+  end.setHours(23, 59, 0, 0)
+  return localDateTimeValue(end)
 }
 
 async function prepareImage(file: File, maxBytes = MAX_UPLOAD_BYTES) {
@@ -166,13 +176,13 @@ export function DropBuilder() {
   const host = siteHost()
   const [phase, setPhase] = useState<Phase>('upload')
   const [sellerName, setSellerName] = useState('')
-  const [dropSlug, setDropSlug] = useState('tonight')
+  const [dropSlug, setDropSlug] = useState('drops')
   const [editingSlug, setEditingSlug] = useState(false)
   const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([])
   const [dragActive, setDragActive] = useState(false)
   const [products, setProducts] = useState<ProductDraft[]>([])
-  const [windowEndsAt, setWindowEndsAt] = useState(() => hoursFromNow(2))
-  const [windowPreset, setWindowPreset] = useState<number | null>(2)
+  const [windowEndsAt, setWindowEndsAt] = useState(() => endOfWindow('today'))
+  const [windowPreset, setWindowPreset] = useState<WindowPreset | null>('today')
   const [fulfilment, setFulfilment] = useState<Fulfilment>('pickup')
   const [deliveryFee, setDeliveryFee] = useState('5')
   const [pickupNote, setPickupNote] = useState('')
@@ -187,7 +197,7 @@ export function DropBuilder() {
   >({})
 
   const sellerSlug = slugify(sellerName, 'your-name')
-  const cleanDropSlug = slugify(dropSlug, 'tonight')
+  const cleanDropSlug = slugify(dropSlug, 'drops')
 
   const imagePreviews = useMemo(
     () =>
@@ -298,29 +308,34 @@ export function DropBuilder() {
     })
   }
 
+  async function saveUploadedProductShot(image: Blob, filename: string) {
+    const formData = new FormData()
+    formData.set('mode', 'upload')
+    formData.set('image', image, filename)
+
+    const response = await fetch('/api/product-shots', {
+      method: 'POST',
+      body: formData,
+    })
+    const result = (await response.json()) as {
+      imageUrl?: string
+      error?: string
+    }
+    if (!response.ok || !result.imageUrl) {
+      throw new Error(result.error || 'That photo could not be saved.')
+    }
+
+    return result.imageUrl
+  }
+
   async function uploadProductShot(product: ProductDraft, image: File) {
     setProductShotBusy(product.id, true)
     setProductShotError(product.id)
 
     try {
       const prepared = await prepareImage(image)
-      const formData = new FormData()
-      formData.set('mode', 'upload')
-      formData.set('image', prepared, image.name)
-
-      const response = await fetch('/api/product-shots', {
-        method: 'POST',
-        body: formData,
-      })
-      const result = (await response.json()) as {
-        imageUrl?: string
-        error?: string
-      }
-      if (!response.ok || !result.imageUrl) {
-        throw new Error(result.error || 'That photo could not be saved.')
-      }
-
-      updateProductImage(product.id, result.imageUrl, 'uploaded')
+      const imageUrl = await saveUploadedProductShot(prepared, image.name)
+      updateProductImage(product.id, imageUrl, 'uploaded')
     } catch (caught) {
       setProductShotError(
         product.id,
@@ -426,6 +441,7 @@ export function DropBuilder() {
           name: string
           variant: string | null
           price: number
+          sourceImageIndex: number
         }>
         error?: string
       }
@@ -437,7 +453,37 @@ export function DropBuilder() {
         )
       }
 
-      setProducts(result.products.map((product) => newProduct(product)))
+      const savedImages = await Promise.allSettled(
+        images.map((image, index) =>
+          saveUploadedProductShot(
+            image,
+            selectedImages[index]?.file.name || `source-${index + 1}.jpg`,
+          ),
+        ),
+      )
+      const imageUrls = savedImages.map((saved) =>
+        saved.status === 'fulfilled' ? saved.value : null,
+      )
+      const drafts = result.products.map((product) => {
+        const draft = newProduct(product)
+        const imageUrl = imageUrls[product.sourceImageIndex] ?? null
+
+        return imageUrl
+          ? { ...draft, imageUrl, imageSource: 'source' as const }
+          : draft
+      })
+
+      setProducts(drafts)
+      setProductShotErrors(
+        Object.fromEntries(
+          drafts
+            .filter((product) => !product.imageUrl)
+            .map((product) => [
+              product.id,
+              'We could not attach the source photo. You can add one here.',
+            ]),
+        ),
+      )
       setPhase('review')
     } catch (caught) {
       setError(
@@ -716,16 +762,17 @@ export function DropBuilder() {
             Buyers see a countdown. The link stops selling when it hits zero.
           </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 grid grid-cols-4 gap-2" aria-label="Selling window">
             {WINDOW_PRESETS.map((preset) => (
               <Button
-                key={preset.hours}
+                key={preset.value}
                 type="button"
-                variant={windowPreset === preset.hours ? 'default' : 'outline'}
-                aria-pressed={windowPreset === preset.hours}
+                variant={windowPreset === preset.value ? 'default' : 'outline'}
+                className="h-11 px-2 text-xs sm:text-sm"
+                aria-pressed={windowPreset === preset.value}
                 onClick={() => {
-                  setWindowPreset(preset.hours)
-                  setWindowEndsAt(hoursFromNow(preset.hours))
+                  setWindowPreset(preset.value)
+                  setWindowEndsAt(endOfWindow(preset.value))
                 }}
               >
                 {preset.label}
@@ -734,11 +781,11 @@ export function DropBuilder() {
             <Button
               type="button"
               variant={windowPreset === null ? 'default' : 'outline'}
+              className="h-11 px-2 text-xs sm:text-sm"
               aria-pressed={windowPreset === null}
               onClick={() => setWindowPreset(null)}
             >
-              <Pencil />
-              Pick a time
+              Custom
             </Button>
           </div>
 
@@ -767,27 +814,49 @@ export function DropBuilder() {
             How buyers get it
           </h2>
 
-          <div className="mt-4 space-y-1.5">
-            <Label htmlFor="fulfilment">Pickup or delivery</Label>
-            <Select
-              value={fulfilment}
-              onValueChange={(value) => setFulfilment(value as Fulfilment)}
-            >
-              <SelectTrigger id="fulfilment" className="w-full">
-                <SelectValue>
-                  {(value: Fulfilment) => FULFILMENT_LABELS[value]}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pickup">
-                  {FULFILMENT_LABELS.pickup}
-                </SelectItem>
-                <SelectItem value="delivery">
-                  {FULFILMENT_LABELS.delivery}
-                </SelectItem>
-                <SelectItem value="both">{FULFILMENT_LABELS.both}</SelectItem>
-              </SelectContent>
-            </Select>
+          <div
+            className="mt-4 grid grid-cols-3 gap-2"
+            role="radiogroup"
+            aria-label="How buyers get their orders"
+          >
+            {FULFILMENT_OPTIONS.map((option) => {
+              const selected = fulfilment === option.value
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  className={cn(
+                    'relative min-h-24 rounded-xl border p-3 text-left transition-colors outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
+                    selected
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-card hover:border-primary/50',
+                  )}
+                  onClick={() => setFulfilment(option.value)}
+                >
+                  <span className="block text-sm font-semibold">
+                    {option.label}
+                  </span>
+                  <span
+                    className={cn(
+                      'mt-1 block text-xs leading-snug',
+                      selected
+                        ? 'text-primary-foreground/75'
+                        : 'text-muted-foreground',
+                    )}
+                  >
+                    {option.detail}
+                  </span>
+                  {selected && (
+                    <span className="absolute right-2.5 bottom-2.5 flex size-5 items-center justify-center rounded-full bg-primary-foreground text-primary">
+                      <Check className="size-3" strokeWidth={3} />
+                    </span>
+                  )}
+                </button>
+              )
+            })}
           </div>
 
           {(fulfilment === 'delivery' || fulfilment === 'both') && (
@@ -867,7 +936,7 @@ export function DropBuilder() {
           Step 1 of 2
         </p>
         <h1 className="mt-3 font-display text-4xl leading-[1.05] font-semibold tracking-tight text-balance sm:text-5xl">
-          Turn a photo into a storefront.
+          Upload product photos to a storefront.
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
           Upload the menu photos you already send customers. We&rsquo;ll read
@@ -1002,12 +1071,12 @@ export function DropBuilder() {
               className="font-mono"
               value={dropSlug}
               maxLength={64}
-              placeholder="tonight"
+              placeholder="drops"
               required
               onChange={(event) => setDropSlug(event.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              Name this drop: tonight, weekend-bake, live-sale.
+              Keep /drops, or name it for a sale: weekend-bake, live-sale.
             </p>
           </div>
         )}
@@ -1028,12 +1097,12 @@ export function DropBuilder() {
         {extracting ? (
           <>
             <LoaderCircle className="animate-spin" />
-            Reading your photos…
+            Analyzing your photos…
           </>
         ) : (
           <>
             <Sparkles />
-            Read my photos
+            Analyze my photos
           </>
         )}
       </Button>
@@ -1049,7 +1118,7 @@ export function DropBuilder() {
           setError(null)
         }}
       >
-        Add items by hand instead
+        Add items manually
       </Button>
     </form>
   )

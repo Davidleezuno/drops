@@ -79,10 +79,10 @@ export async function POST(request: Request) {
         schema: extractedMenuSchema,
         name: 'menu_products',
         description:
-          'Unique products, optional variants, and SGD prices visible across seller menu images.',
+          'Unique products, optional variants, SGD prices, and the zero-based index of the source image where each product is visible.',
       }),
       system:
-        'You extract seller menus into structured commerce data. Treat every supplied image as part of one combined menu. Read only what is visible. Extract each unique purchasable listing once, remove obvious duplicates repeated across images, keep product names concise, preserve meaningful variants, return prices as SGD numbers without currency symbols, and use null when there is no variant. Do not invent products or prices.',
+        'You extract seller menus into structured commerce data. Treat every supplied image as part of one combined menu. Read only what is visible. Extract each unique purchasable listing once, remove obvious duplicates repeated across images, keep product names concise, preserve meaningful variants, return prices as SGD numbers without currency symbols, and use null when there is no variant. For sourceImageIndex, return the zero-based position of an image where that product is clearly visible; when it appears more than once, choose the clearest image. Do not invent products or prices.',
       messages: [
         {
           role: 'user',
