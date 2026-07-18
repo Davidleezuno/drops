@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { createHash, createHmac } from 'node:crypto'
 
 import { createServiceClient } from '@/lib/db'
 import { parseHitPayCompletedEvent } from '@/lib/hitpay'
@@ -19,62 +18,10 @@ export async function POST(request: Request) {
 
   const rawBody = Buffer.from(await request.arrayBuffer())
   const signature = request.headers.get('hitpay-signature')
-  const decodedSalt = Buffer.from(salt, 'base64').toString('utf8')
-  const matchedSaltEncoding = verifyHitPaySignature(rawBody, signature, salt)
-    ? 'dashboard-value'
-    : decodedSalt.startsWith('$2') &&
-        verifyHitPaySignature(rawBody, signature, decodedSalt)
-      ? 'base64-decoded-dashboard-value'
-      : null
 
-  if (!matchedSaltEncoding) {
-    const normalizedSignature = signature?.trim() ?? ''
-    const expectedSignatures = [salt, decodedSalt]
-      .filter((candidate, index, candidates) =>
-        candidate && candidates.indexOf(candidate) === index,
-      )
-      .map((candidate) =>
-        createHmac('sha256', candidate).update(rawBody).digest('hex'),
-      )
-
-    console.warn(
-      JSON.stringify({
-        tag: '[DEBUG-hitpay-signature]',
-        signatureLength: normalizedSignature.length,
-        signatureEncoding: /^[0-9a-f]+$/i.test(normalizedSignature)
-          ? 'hex'
-          : /^[A-Za-z0-9+/]+={0,2}$/.test(normalizedSignature)
-            ? 'base64'
-            : 'other',
-        signatureSample: `${normalizedSignature.slice(0, 8)}…${normalizedSignature.slice(-8)}`,
-        expectedSamples: expectedSignatures.map(
-          (expected) => `${expected.slice(0, 8)}…${expected.slice(-8)}`,
-        ),
-        bodyBytes: rawBody.length,
-        bodySha256: createHash('sha256')
-          .update(rawBody)
-          .digest('hex')
-          .slice(0, 16),
-        saltLength: salt.length,
-        saltSha256: createHash('sha256')
-          .update(salt)
-          .digest('hex')
-          .slice(0, 16),
-        contentType: request.headers.get('content-type'),
-        eventType: request.headers.get('hitpay-event-type'),
-        eventObject: request.headers.get('hitpay-event-object'),
-      }),
-    )
-
+  if (!verifyHitPaySignature(rawBody, signature, salt)) {
     return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
-
-  console.info(
-    JSON.stringify({
-      tag: '[DEBUG-hitpay-salt-match]',
-      matchedSaltEncoding,
-    }),
-  )
 
   let payload: unknown
   try {
