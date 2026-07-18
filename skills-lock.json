@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "hitpay": {
+      "source": "hit-pay/agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/hitpay/SKILL.md",
+      "computedHash": "3e1f27c5a1b91a0b827ba8edc5df9a102785cc3b33a12c8c519b7a5291f824d6"
+    }
+  }
+}
