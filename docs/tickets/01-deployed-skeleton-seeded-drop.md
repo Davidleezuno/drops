@@ -6,10 +6,10 @@ Includes standing up the Supabase project with the full schema from the tech spe
 
 **Blocked by:** None — can start immediately.
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Production Vercel URL renders the seeded drop on a phone: products, prices, stock, countdown
-- [ ] Data comes from Supabase Postgres, not hardcoded constants
-- [ ] Full schema applied, including RLS (anon can read drops/products; orders and webhook_events are server-only)
-- [ ] Seed script creates a fresh demo drop in one command
-- [ ] An ended drop (window in the past) renders as "Drop ended" instead of the product list
+- [x] Production Vercel URL renders the seeded drop on a phone: products, prices, stock, countdown — https://drops-gold.vercel.app/rotiwife/tonight
+- [x] Data comes from Supabase Postgres, not hardcoded constants
+- [x] Full schema applied, including RLS (anon can read drops/products; orders and webhook_events are server-only) — `supabase/migrations/0001_init.sql`
+- [x] Seed script creates a fresh demo drop in one command — `npm run seed`
+- [x] An ended drop (window in the past) renders as "Drop ended" instead of the product list
