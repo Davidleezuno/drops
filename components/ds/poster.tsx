@@ -6,7 +6,7 @@ const variants: Record<PosterVariant, { card: string; title: string }> = {
   // The demo's money shot: ink poster, paper type, slight stamp tilt.
   "sold-out": {
     card: "bg-foreground text-background",
-    title: "-rotate-2 uppercase",
+    title: "-rotate-2 uppercase sm:text-7xl",
   },
   ended: {
     card: "border border-border bg-card text-foreground",

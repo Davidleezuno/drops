@@ -8,6 +8,7 @@
     "db:migrate": "pnpm dlx supabase@2.109.1 db push --linked",
     "dev": "next dev",
     "build": "next build",
+    "race:proof": "node --env-file=.env.local scripts/race-proof.mjs",
     "seed": "node --env-file=.env.local scripts/seed.mjs",
     "start": "next start",
     "lint": "eslint"

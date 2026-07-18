@@ -10,9 +10,11 @@ import {
   ImagePlus,
   LoaderCircle,
   LockKeyhole,
+  Maximize2,
   Plus,
   Share2,
   Sparkles,
+  X,
 } from 'lucide-react'
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 
@@ -122,6 +124,7 @@ export function DropBuilder() {
   const [publishing, setPublishing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [published, setPublished] = useState<PublishedDrop | null>(null)
+  const [projectingQr, setProjectingQr] = useState(false)
 
   const previewUrl = useMemo(
     () => (file ? URL.createObjectURL(file) : null),
@@ -134,6 +137,23 @@ export function DropBuilder() {
     },
     [previewUrl],
   )
+
+  useEffect(() => {
+    if (!projectingQr) return
+
+    const previousOverflow = document.body.style.overflow
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setProjectingQr(false)
+    }
+
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', closeOnEscape)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', closeOnEscape)
+    }
+  }, [projectingQr])
 
   function updateProduct(updated: ProductDraft) {
     setProducts((current) =>
@@ -252,6 +272,43 @@ export function DropBuilder() {
   if (phase === 'success' && published) {
     return (
       <section className="animate-rise flex flex-1 flex-col">
+        {projectingQr && (
+          <div
+            className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background p-5"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Project buyer QR code"
+          >
+            <Button
+              type="button"
+              variant="outline"
+              className="absolute top-5 right-5"
+              onClick={() => setProjectingQr(false)}
+            >
+              <X />
+              Close
+            </Button>
+            <p className="font-mono text-sm tracking-widest text-live uppercase">
+              Scan to join the drop
+            </p>
+            <div className="mt-5 w-[min(76vh,82vw)] max-w-3xl rounded-3xl bg-white p-4 shadow-lg">
+              <Image
+                src={published.qrDataUrl}
+                alt={`QR code for ${published.buyerUrl}`}
+                width={960}
+                height={960}
+                className="size-full"
+                unoptimized
+                priority
+              />
+            </div>
+            <p className="mt-5 max-w-[90vw] font-mono text-xl break-all sm:text-3xl">
+              drops.sg/{published.sellerSlug}/
+              <span className="text-primary">{published.dropSlug}</span>
+            </p>
+          </div>
+        )}
+
         <header className="text-center">
           <p className="font-mono text-xs tracking-widest text-live uppercase">
             Your drop is live
@@ -265,7 +322,7 @@ export function DropBuilder() {
         </header>
 
         <div className="mt-8 rounded-2xl border border-border bg-card p-5 text-center shadow-sm">
-          <div className="mx-auto w-full max-w-64 rounded-xl bg-white p-3">
+          <div className="mx-auto w-full max-w-80 rounded-xl bg-white p-3">
             <Image
               src={published.qrDataUrl}
               alt={`QR code for ${published.buyerUrl}`}
@@ -281,6 +338,14 @@ export function DropBuilder() {
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-2">
             <CopyButton value={published.buyerUrl} label="Copy buyer link" />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setProjectingQr(true)}
+            >
+              <Maximize2 />
+              Project QR
+            </Button>
             <Button
               type="button"
               onClick={shareBuyerLink}

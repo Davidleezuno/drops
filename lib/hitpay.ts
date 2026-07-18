@@ -1,6 +1,8 @@
 const HITPAY_SANDBOX_URL =
   'https://api.sandbox.hit-pay.com/v1/payment-requests'
 const HITPAY_REQUEST_TIMEOUT_MS = 10_000
+const DEFAULT_PAYMENT_METHODS = ['paynow_online'] as const
+const DEMO_PAYMENT_METHODS = new Set(['paynow_online', 'card'])
 
 export type HitPayPaymentRequest = {
   id: string
@@ -32,6 +34,29 @@ export class HitPayRequestError extends Error {
   }
 }
 
+export function configuredHitPayPaymentMethods(
+  configured = process.env.HITPAY_PAYMENT_METHODS,
+): string[] {
+  const methods = configured
+    ? configured
+        .split(',')
+        .map((method) => method.trim())
+        .filter(Boolean)
+    : [...DEFAULT_PAYMENT_METHODS]
+  const uniqueMethods = [...new Set(methods)]
+
+  if (!uniqueMethods.length) {
+    throw new HitPayRequestError('At least one HitPay payment method is required')
+  }
+  if (uniqueMethods.some((method) => !DEMO_PAYMENT_METHODS.has(method))) {
+    throw new HitPayRequestError(
+      'HITPAY_PAYMENT_METHODS supports paynow_online and card for this demo',
+    )
+  }
+
+  return uniqueMethods
+}
+
 export async function createHitPayPaymentRequest(
   {
     amount,
@@ -52,10 +77,12 @@ export async function createHitPayPaymentRequest(
     apiKey = process.env.HITPAY_API_KEY,
     fetcher = fetch,
     endpoint = HITPAY_SANDBOX_URL,
+    paymentMethods = configuredHitPayPaymentMethods(),
   }: {
     apiKey?: string
     fetcher?: typeof fetch
     endpoint?: string
+    paymentMethods?: string[]
   } = {},
 ): Promise<HitPayPaymentRequest> {
   if (!apiKey) throw new HitPayRequestError('HitPay is not configured')
@@ -63,7 +90,9 @@ export async function createHitPayPaymentRequest(
   const body = new URLSearchParams()
   body.set('amount', amount)
   body.set('currency', 'SGD')
-  body.append('payment_methods[]', 'paynow_online')
+  for (const method of paymentMethods) {
+    body.append('payment_methods[]', method)
+  }
   body.set('reference_number', referenceNumber)
   body.set('purpose', purpose.slice(0, 255))
   body.set('name', buyerName)

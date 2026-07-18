@@ -154,7 +154,11 @@ export function DropStorefront({
           The window has closed. Follow {drop.seller_name} for the next one.
         </Poster>
       ) : allSoldOut ? (
-        <Poster variant="sold-out" title="Sold out" className="flex-1 py-12">
+        <Poster
+          variant="sold-out"
+          title="Sold out"
+          className="flex-1 py-12 sm:min-h-[50vh]"
+        >
           Everything&rsquo;s gone. Follow {drop.seller_name} for the next drop.
         </Poster>
       ) : (
