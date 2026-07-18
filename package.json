@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "db:generate": "pnpm dlx supabase@2.109.1 migration new",
+    "db:migrate": "pnpm dlx supabase@2.109.1 db push --linked",
     "dev": "next dev",
     "build": "next build",
     "seed": "node --env-file=.env.local scripts/seed.mjs",

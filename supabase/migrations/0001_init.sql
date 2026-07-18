@@ -63,4 +63,16 @@ drop policy if exists "anon read products" on products;
 create policy "anon read products" on products for select to anon using (true);
 
 -- Realtime fan-out: clients subscribe to postgres_changes UPDATE on products.
-alter publication supabase_realtime add table products;
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'products'
+  ) then
+    alter publication supabase_realtime add table products;
+  end if;
+end;
+$$;

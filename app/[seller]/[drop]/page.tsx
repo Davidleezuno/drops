@@ -79,7 +79,12 @@ export default async function DropPage({
                 className="animate-rise"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
-                <ProductRow product={product} />
+                <ProductRow
+                  product={product}
+                  fulfilment={drop.fulfilment}
+                  deliveryFee={drop.delivery_fee}
+                  pickupNote={drop.pickup_note}
+                />
               </li>
             ))}
           </ul>
