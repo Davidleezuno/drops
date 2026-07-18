@@ -16,7 +16,7 @@ import {
   Sparkles,
   X,
 } from 'lucide-react'
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react'
 
 import {
   ExtractedProductRow,
@@ -46,7 +46,13 @@ type PublishedDrop = {
 }
 
 const MAX_UPLOAD_BYTES = 4 * 1024 * 1024
+const MAX_IMAGE_COUNT = 5
 const COMPRESSION_THRESHOLD_BYTES = 3 * 1024 * 1024
+
+type SelectedImage = {
+  id: string
+  file: File
+}
 
 function newProduct(product?: {
   name: string
@@ -69,29 +75,44 @@ function localDateTimeValue(date: Date) {
   return localTime.toISOString().slice(0, 16)
 }
 
-async function prepareImage(file: File) {
-  if (file.size <= COMPRESSION_THRESHOLD_BYTES) return file
+async function prepareImage(file: File, maxBytes = MAX_UPLOAD_BYTES) {
+  if (file.size <= Math.min(COMPRESSION_THRESHOLD_BYTES, maxBytes)) return file
 
   try {
     const bitmap = await createImageBitmap(file)
-    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height))
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.max(1, Math.round(bitmap.width * scale))
-    canvas.height = Math.max(1, Math.round(bitmap.height * scale))
-    canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-    bitmap.close()
-
-    const compressed = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, 'image/jpeg', 0.82),
+    let scale = Math.min(
+      1,
+      1600 / Math.max(bitmap.width, bitmap.height),
+      Math.sqrt(maxBytes / file.size) * 0.95,
     )
+    const canvas = document.createElement('canvas')
 
-    if (compressed && compressed.size <= MAX_UPLOAD_BYTES) return compressed
+    for (const quality of [0.82, 0.7, 0.58]) {
+      canvas.width = Math.max(1, Math.round(bitmap.width * scale))
+      canvas.height = Math.max(1, Math.round(bitmap.height * scale))
+      canvas
+        .getContext('2d')
+        ?.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+
+      const compressed = await new Promise<Blob | null>((resolve) =>
+        canvas.toBlob(resolve, 'image/jpeg', quality),
+      )
+
+      if (compressed && compressed.size <= maxBytes) {
+        bitmap.close()
+        return compressed
+      }
+
+      scale *= 0.82
+    }
+
+    bitmap.close()
   } catch {
     // The original file may still fit the request limit; validate it below.
   }
 
-  if (file.size <= MAX_UPLOAD_BYTES) return file
-  throw new Error('That photo is too large. Choose one under 4 MB.')
+  if (file.size <= maxBytes) return file
+  throw new Error('One of those photos is too large to prepare. Try a smaller image.')
 }
 
 function CopyButton({ value, label }: { value: string; label: string }) {
@@ -115,7 +136,8 @@ export function DropBuilder() {
   const [phase, setPhase] = useState<Phase>('upload')
   const [sellerName, setSellerName] = useState('')
   const [dropSlug, setDropSlug] = useState('tonight')
-  const [file, setFile] = useState<File | null>(null)
+  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([])
+  const [dragActive, setDragActive] = useState(false)
   const [products, setProducts] = useState<ProductDraft[]>([])
   const [windowEndsAt, setWindowEndsAt] = useState(() =>
     localDateTimeValue(new Date(Date.now() + 2 * 60 * 60 * 1000)),
@@ -133,16 +155,20 @@ export function DropBuilder() {
     Record<string, string>
   >({})
 
-  const previewUrl = useMemo(
-    () => (file ? URL.createObjectURL(file) : null),
-    [file],
+  const imagePreviews = useMemo(
+    () =>
+      selectedImages.map((image) => ({
+        ...image,
+        url: URL.createObjectURL(image.file),
+      })),
+    [selectedImages],
   )
 
   useEffect(
     () => () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl)
+      imagePreviews.forEach((image) => URL.revokeObjectURL(image.url))
     },
-    [previewUrl],
+    [imagePreviews],
   )
 
   useEffect(() => {
@@ -168,6 +194,41 @@ export function DropBuilder() {
         product.id === updated.id ? updated : product,
       ),
     )
+  }
+
+  function addImages(files: File[]) {
+    const images = files.filter((file) => file.type.startsWith('image/'))
+    const existing = new Set(
+      selectedImages.map(
+        ({ file }) => `${file.name}:${file.size}:${file.lastModified}`,
+      ),
+    )
+    const uniqueImages = images.filter(
+      (file) => !existing.has(`${file.name}:${file.size}:${file.lastModified}`),
+    )
+    const availableSlots = MAX_IMAGE_COUNT - selectedImages.length
+    const additions = uniqueImages.slice(0, availableSlots)
+
+    if (images.length !== files.length) {
+      setError('Only image files can be added.')
+    } else if (uniqueImages.length > availableSlots) {
+      setError(`Add up to ${MAX_IMAGE_COUNT} photos at a time.`)
+    } else {
+      setError(null)
+    }
+
+    if (!additions.length) return
+
+    setSelectedImages((current) => [
+      ...current,
+      ...additions.map((file) => ({ id: crypto.randomUUID(), file })),
+    ])
+  }
+
+  function dropImages(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault()
+    setDragActive(false)
+    addImages(Array.from(event.dataTransfer.files))
   }
 
   function updateProductImage(
@@ -248,11 +309,14 @@ export function DropBuilder() {
       if (product.imageUrl) {
         formData.set('referenceUrl', product.imageUrl)
       } else if (
-        file &&
-        ['image/jpeg', 'image/png', 'image/webp'].includes(file.type)
+        selectedImages[0] &&
+        ['image/jpeg', 'image/png', 'image/webp'].includes(
+          selectedImages[0].file.type,
+        )
       ) {
-        const prepared = await prepareImage(file)
-        formData.set('image', prepared, file.name)
+        const referenceImage = selectedImages[0].file
+        const prepared = await prepareImage(referenceImage)
+        formData.set('image', prepared, referenceImage.name)
       }
 
       const response = await fetch('/api/product-shots', {
@@ -300,15 +364,24 @@ export function DropBuilder() {
 
   async function extract(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!file) return
+    if (!selectedImages.length) return
 
     setExtracting(true)
     setError(null)
 
     try {
-      const image = await prepareImage(file)
+      const maxBytesPerImage = Math.floor(
+        MAX_UPLOAD_BYTES / selectedImages.length,
+      )
+      const images = await Promise.all(
+        selectedImages.map(({ file }) =>
+          prepareImage(file, maxBytesPerImage),
+        ),
+      )
       const formData = new FormData()
-      formData.set('image', image, 'menu.jpg')
+      images.forEach((image, index) => {
+        formData.append('images', image, `menu-${index + 1}.jpg`)
+      })
 
       const response = await fetch('/api/extract', {
         method: 'POST',
@@ -727,8 +800,9 @@ export function DropBuilder() {
           Your next drop starts with a photo.
         </h1>
         <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-          Upload the menu or product sheet you already share. We&rsquo;ll turn it
-          into an editable storefront draft.
+          Upload the menu or product sheets you already share. We&rsquo;ll read
+          them together and turn every listing into an editable storefront
+          draft.
         </p>
       </header>
 
@@ -767,51 +841,97 @@ export function DropBuilder() {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="menu-photo">Menu or product photo</Label>
+          <div className="flex items-baseline justify-between gap-3">
+            <Label htmlFor="menu-photo">Menu or product photos</Label>
+            <span className="font-mono text-[11px] text-muted-foreground">
+              {selectedImages.length}/{MAX_IMAGE_COUNT}
+            </span>
+          </div>
           <input
             id="menu-photo"
             className="sr-only"
             type="file"
             accept="image/*"
-            required
+            multiple
             onChange={(event) => {
-              setFile(event.target.files?.[0] ?? null)
-              setError(null)
+              addImages(Array.from(event.target.files ?? []))
+              event.currentTarget.value = ''
             }}
           />
           <label
             htmlFor="menu-photo"
-            className="group relative flex min-h-56 cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border bg-card text-center transition-colors hover:border-primary/50 focus-within:border-ring"
+            className={`group relative flex cursor-pointer flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed bg-card text-center transition-all hover:border-primary/50 focus-within:border-ring ${
+              selectedImages.length ? 'min-h-32' : 'min-h-56'
+            } ${
+              dragActive
+                ? 'border-primary bg-accent/60 ring-3 ring-primary/15'
+                : 'border-border'
+            }`}
+            onDragEnter={(event) => {
+              event.preventDefault()
+              setDragActive(true)
+            }}
+            onDragOver={(event) => event.preventDefault()}
+            onDragLeave={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                setDragActive(false)
+              }
+            }}
+            onDrop={dropImages}
           >
-            {previewUrl ? (
-              <>
-                <Image
-                  src={previewUrl}
-                  alt="Selected menu preview"
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 448px) 100vw, 448px"
-                  unoptimized
-                />
-                <span className="absolute inset-x-3 bottom-3 rounded-lg bg-foreground/85 px-3 py-2 text-xs text-background backdrop-blur-sm">
-                  Tap to choose a different photo
-                </span>
-              </>
-            ) : (
-              <>
-                <span className="flex size-12 items-center justify-center rounded-full bg-accent text-primary transition-transform group-hover:scale-105">
-                  <ImagePlus className="size-5" />
-                </span>
-                <span className="mt-4 text-sm font-semibold">
-                  Choose from your phone
-                </span>
-                <span className="mt-1 max-w-56 text-xs leading-relaxed text-muted-foreground">
-                  A clear photo or screenshot works best. Large photos are
-                  compressed before upload.
-                </span>
-              </>
-            )}
+            <span className="flex size-12 items-center justify-center rounded-full bg-accent text-primary transition-transform group-hover:scale-105">
+              <ImagePlus className="size-5" />
+            </span>
+            <span className="mt-3 text-sm font-semibold">
+              {dragActive
+                ? 'Drop photos here'
+                : selectedImages.length
+                  ? 'Add more photos'
+                  : 'Choose or drop photos'}
+            </span>
+            <span className="mt-1 max-w-64 text-xs leading-relaxed text-muted-foreground">
+              Up to {MAX_IMAGE_COUNT} images. We&rsquo;ll combine the listings and
+              remove obvious duplicates.
+            </span>
           </label>
+
+          {imagePreviews.length > 0 && (
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              {imagePreviews.map((image, index) => (
+                <div
+                  key={image.id}
+                  className="group relative aspect-[4/3] overflow-hidden rounded-xl border border-border bg-muted"
+                >
+                  <Image
+                    src={image.url}
+                    alt={`Selected menu ${index + 1}`}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 448px) 50vw, 216px"
+                    unoptimized
+                  />
+                  <span className="absolute bottom-2 left-2 rounded-md bg-foreground/80 px-2 py-1 font-mono text-[10px] text-background backdrop-blur-sm">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="secondary"
+                    className="absolute top-2 right-2 rounded-full bg-background/90 shadow-sm backdrop-blur-sm"
+                    aria-label={`Remove photo ${index + 1}`}
+                    onClick={() => {
+                      setSelectedImages((current) =>
+                        current.filter((item) => item.id !== image.id),
+                      )
+                      setError(null)
+                    }}
+                  >
+                    <X />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
@@ -825,7 +945,7 @@ export function DropBuilder() {
         type="submit"
         size="lg"
         className="mt-6 w-full"
-        disabled={!file || extracting}
+        disabled={!selectedImages.length || extracting}
       >
         {extracting ? (
           <>
