@@ -43,7 +43,11 @@ export function ProductRow({
           )}
           <Price amount={product.price} className="mt-1.5 block" />
         </div>
-        <StockBadge remaining={remaining} />
+        <StockBadge
+          key={remaining}
+          remaining={remaining}
+          className="animate-tick"
+        />
       </div>
 
       <BuyFlow

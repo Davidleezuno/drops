@@ -54,7 +54,13 @@ export function BuyFlow({
     [deliveryFee, quantity, selectedFulfilment, unitPrice],
   )
 
-  if (remaining <= 0) return null
+  if (remaining <= 0) {
+    return (
+      <Button type="button" size="lg" className="mt-4 w-full" disabled>
+        Sold out
+      </Button>
+    )
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
