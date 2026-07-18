@@ -15,6 +15,19 @@ import { Countdown } from './countdown'
 
 const POLL_INTERVAL_MS = 5_000
 
+export type StorefrontDrop = Pick<
+  Drop,
+  | 'id'
+  | 'seller_name'
+  | 'seller_slug'
+  | 'drop_slug'
+  | 'fulfilment'
+  | 'delivery_fee'
+  | 'pickup_note'
+  | 'window_ends_at'
+  | 'status'
+>
+
 function mergeProduct(current: Product, incoming: Product) {
   return {
     ...current,
@@ -30,7 +43,7 @@ export function DropStorefront({
   initialProducts,
   initialEnded,
 }: {
-  drop: Drop
+  drop: StorefrontDrop
   initialProducts: Product[]
   initialEnded: boolean
 }) {

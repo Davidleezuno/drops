@@ -2,9 +2,9 @@ import { notFound } from 'next/navigation'
 
 import { Shell } from '@/components/ds/shell'
 import { createServiceClient } from '@/lib/db'
-import type { Drop, Product } from '@/lib/types'
+import type { Product } from '@/lib/types'
 
-import { DropStorefront } from './drop-storefront'
+import { DropStorefront, type StorefrontDrop } from './drop-storefront'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,10 +18,12 @@ export default async function DropPage({
 
   const { data: drop } = await supabase
     .from('drops')
-    .select('*')
+    .select(
+      'id, seller_name, seller_slug, drop_slug, fulfilment, delivery_fee, pickup_note, window_ends_at, status',
+    )
     .eq('seller_slug', seller)
     .eq('drop_slug', dropSlug)
-    .maybeSingle<Drop>()
+    .maybeSingle<StorefrontDrop>()
 
   if (!drop) notFound()
 
