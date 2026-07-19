@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import {
   AlertTriangle,
   Clock3,
@@ -326,18 +327,33 @@ export function ManageConsole({
             </p>
           </div>
 
-          {!snapshot.settled && (
+          <div className="flex flex-wrap gap-2">
             <Button
-              type="button"
               size="lg"
               variant="outline"
-              onClick={endDropNow}
-              disabled={ending}
+              nativeButton={false}
+              render={
+                <Link
+                  href={`/${snapshot.drop.seller_slug}/${snapshot.drop.drop_slug}`}
+                />
+              }
             >
-              <Square />
-              {ending ? 'Ending…' : 'End drop now'}
+              <Store />
+              Walk your store
             </Button>
-          )}
+            {!snapshot.settled && (
+              <Button
+                type="button"
+                size="lg"
+                variant="outline"
+                onClick={endDropNow}
+                disabled={ending}
+              >
+                <Square />
+                {ending ? 'Ending…' : 'End drop now'}
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">

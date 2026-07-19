@@ -1,7 +1,7 @@
 'use client'
 
 import { MapPin, Truck } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 import { ArchetypeLayout } from '@/components/ds/archetypes'
 import { DropHeader } from '@/components/ds/drop-header'
@@ -11,15 +11,16 @@ import { ProductRow } from '@/components/ds/product-row'
 import { ReactionLayer } from '@/components/ds/reaction-layer'
 import { SocialToast } from '@/components/ds/social-toast'
 import { WatchingPill } from '@/components/ds/watching-pill'
+import { WorldGate } from '@/components/world/world-gate'
 import { allSoldOut as computeAllSoldOut } from '@/lib/drop-state'
 import { sgd } from '@/lib/format'
 import { createClient } from '@/lib/supabase/client'
 import type { Drop, Product } from '@/lib/types'
 import { useDropSocial } from '@/lib/use-drop-social'
+import { useLiveDropProducts } from '@/lib/use-live-drop-products'
+import type { SceneConfig } from '@/lib/world/scene-config'
 
 import { Countdown } from './countdown'
-
-const POLL_INTERVAL_MS = 5_000
 
 export type StorefrontDrop = Pick<
   Drop,
@@ -34,16 +35,6 @@ export type StorefrontDrop = Pick<
   | 'status'
   | 'theme'
 >
-
-function mergeProduct(current: Product, incoming: Product) {
-  return {
-    ...current,
-    ...incoming,
-    // The payment settlement function is the only stock writer, and stock_sold
-    // only increases. Keep a slower poll response from undoing a newer event.
-    stock_sold: Math.max(current.stock_sold, incoming.stock_sold),
-  }
-}
 
 /** The buyer page only has product image URLs; pick the one that best matches
  *  the hero's sourceImageIndex, falling back to the first product with a shot. */
@@ -65,98 +56,28 @@ export function DropStorefront({
   drop,
   initialProducts,
   initialEnded,
+  sceneConfig,
 }: {
   drop: StorefrontDrop
   initialProducts: Product[]
   initialEnded: boolean
+  sceneConfig: SceneConfig | null
 }) {
   const supabase = useMemo(() => createClient(), [])
-  const [products, setProducts] = useState(initialProducts)
   const [windowClosed, setWindowClosed] = useState(initialEnded)
+  const products = useLiveDropProducts({
+    supabase,
+    dropId: drop.id,
+    initialProducts,
+    paused: windowClosed,
+  })
   const social = useDropSocial(supabase, drop.id)
 
   const allSoldOut = computeAllSoldOut(products)
 
   const closeWindow = useCallback(() => setWindowClosed(true), [])
 
-  useEffect(() => {
-    if (windowClosed || allSoldOut) return
-
-    let active = true
-
-    async function refreshProducts() {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('drop_id', drop.id)
-        .order('price', { ascending: false })
-        .returns<Product[]>()
-
-      if (!active) return
-      if (error) {
-        console.error('Failed to refresh drop stock', error)
-        return
-      }
-
-      setProducts((current) =>
-        current.map((product) => {
-          const incoming = data.find((candidate) => candidate.id === product.id)
-          return incoming ? mergeProduct(product, incoming) : product
-        }),
-      )
-    }
-
-    const channel = supabase
-      .channel(`drop-${drop.id}-products`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'products',
-          filter: `drop_id=eq.${drop.id}`,
-        },
-        (payload) => {
-          const incoming = payload.new as Product
-          if (incoming.drop_id !== drop.id) return
-
-          setProducts((current) =>
-            current.map((product) =>
-              product.id === incoming.id
-                ? mergeProduct(product, incoming)
-                : product,
-            ),
-          )
-        },
-      )
-      .subscribe((status, error) => {
-        if (status === 'SUBSCRIBED') {
-          // Reconcile the gap between the server render and channel readiness.
-          void refreshProducts()
-        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-          console.error('Drop stock realtime subscription failed', error)
-        }
-      })
-
-    const poller = window.setInterval(refreshProducts, POLL_INTERVAL_MS)
-    const refreshOnFocus = () => void refreshProducts()
-    const refreshWhenVisible = () => {
-      if (document.visibilityState === 'visible') void refreshProducts()
-    }
-
-    window.addEventListener('focus', refreshOnFocus)
-    document.addEventListener('visibilitychange', refreshWhenVisible)
-
-    return () => {
-      active = false
-      window.clearInterval(poller)
-      window.removeEventListener('focus', refreshOnFocus)
-      document.removeEventListener('visibilitychange', refreshWhenVisible)
-      void supabase.removeChannel(channel)
-    }
-  }, [allSoldOut, drop.id, supabase, windowClosed])
-
-  return (
+  const fallback = (
     <>
       <DropHeader
         sellerName={drop.seller_name}
@@ -254,5 +175,19 @@ export function DropStorefront({
         </>
       )}
     </>
+  )
+
+  return (
+    <WorldGate
+      config={sceneConfig}
+      fallback={fallback}
+      drop={drop}
+      products={products}
+      windowClosed={windowClosed}
+      announcement={social.announcement}
+      socialPresenceKey={social.presenceKey}
+      react={social.react}
+      subscribeToReactionEvents={social.subscribeToReactionEvents}
+    />
   )
 }
