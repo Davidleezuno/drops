@@ -96,7 +96,7 @@ export function buildSceneConfig(products: Product[], theme: StorefrontTheme | n
 ```
 
 - Slot assignment = listing order (price desc — same query the flat page uses). First product takes the spotlight plinth near the entrance; the rest fill shelf slots left-to-right. Template supports up to 12 slots; overflow products exist only in the flat list view (acceptable: drops are small by thesis).
-- Ambience presets are hand-tuned lighting rigs: `warm` (tungsten key + soft fill), `hype` (accent-colored rim + higher contrast), `minimal` (flat gallery daylight). Accent tints the neon sign, shelf edge-lighting, and floor material — computed via the existing `oklchString` from [lib/theme.ts](lib/theme.ts).
+- Ambience presets are hand-tuned lighting rigs: `warm` (tungsten key + soft fill), `hype` (accent-colored rim + higher contrast), `minimal` (flat gallery daylight). Accent tints the hanging sign, shelf edge-lighting, and entrance mat — computed via the existing `oklchString` from [lib/theme.ts](lib/theme.ts).
 
 ### 4.3 Routing (`world-gate.tsx`)
 
@@ -121,7 +121,7 @@ Everything degrades to silence, same philosophy as [lib/use-drop-social.ts](lib/
 
 ### 5.1 Template ("shop")
 
-One rectangular room, roughly 14×10 m: entrance at one end, counter at the far end under the neon sign (`voice.dropTitle` in the display face, seller name below), two shelf walls with up to 11 framed slots, one spotlight plinth near the entrance for the hero product. A few CC0 props (plant, counter clutter, rug) from Kenney/poly.pizza for warmth. All geometry procedural three/drei primitives with good materials; contact shadows on desktop only.
+One rectangular room, roughly 14×10 m: entrance at one end, counter at the far end under the hanging fascia sign (`voice.dropTitle` in the display face, seller name below), two shelf walls with up to 11 framed slots, one spotlight plinth near the entrance for the hero product. Procedural props for warmth: plants, counter clutter, rug, string lights, pendant lamps, scalloped entrance awning. All geometry procedural three/drei primitives with good materials; contact shadows on desktop only.
 
 ### 5.2 Product frames
 

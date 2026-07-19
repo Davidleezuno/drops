@@ -48,10 +48,11 @@ function LiveDot({ closed }: { closed: boolean }) {
 }
 
 /**
- * Physical signboard on the back wall: ink frame, warm-white face, the drop
- * title in the display face. The accent appears only as light — the soft
- * halo plane behind the board (faked with a gradient texture; real bloom is
- * a mobile perf trap, per docs/3d-world-design.md §5).
+ * A real shop sign, not a billboard: a wooden fascia board hung off the back
+ * wall on two rope drops from the ceiling, painted face with a seller-accent
+ * rim, a hand-hung half-degree tilt. The accent halo stays on the wall
+ * behind it (faked with a gradient texture; real bloom is a mobile perf
+ * trap, per docs/3d-world-design.md §5). Tilted but still — it never sways.
  */
 export function StoreSign({
   config,
@@ -66,8 +67,9 @@ export function StoreSign({
   const statusText = closed ? 'CLOSED' : 'LIVE IN STORE'
 
   return (
-    <group position={[0, 2.42, -4.93]}>
-      <mesh position={[0, 0, -0.02]}>
+    <group position={[0, 2.28, -4.62]} rotation={[0, 0, 0.012]}>
+      {/* Accent halo on the wall behind the hanging board */}
+      <mesh position={[0, 0.1, -0.34]}>
         <planeGeometry args={[6.4, 3.1]} />
         <meshBasicMaterial
           map={glow}
@@ -78,15 +80,33 @@ export function StoreSign({
         />
       </mesh>
 
-      <RoundedBox args={[4.5, 1.5, 0.1]} radius={0.05} smoothness={3} castShadow>
-        <meshStandardMaterial color={INK} roughness={0.82} />
+      {/* Rope drops from the ceiling (3.2m) to the board's top corners */}
+      {[-1.85, 1.85].map((x) => (
+        <group key={x}>
+          <mesh position={[x, 0.925, 0]}>
+            <cylinderGeometry args={[0.016, 0.016, 0.45, 6]} />
+            <meshStandardMaterial color="#8a7052" roughness={0.95} />
+          </mesh>
+          <mesh position={[x, 0.71, 0.02]}>
+            <sphereGeometry args={[0.035, 10, 10]} />
+            <meshStandardMaterial color={INK} roughness={0.85} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* Wooden board, accent-painted rim, cream painted face */}
+      <RoundedBox args={[4.6, 1.44, 0.12]} radius={0.05} smoothness={3} castShadow>
+        <meshStandardMaterial color="#9c7a58" roughness={0.88} />
       </RoundedBox>
-      <mesh position={[0, 0, 0.052]}>
-        <planeGeometry args={[4.3, 1.3]} />
+      <RoundedBox args={[4.42, 1.28, 0.02]} radius={0.04} smoothness={3} position={[0, 0, 0.06]}>
+        <meshStandardMaterial color={accent} roughness={0.9} />
+      </RoundedBox>
+      <mesh position={[0, 0, 0.075]}>
+        <planeGeometry args={[4.28, 1.16]} />
         <meshStandardMaterial color="#fffdf8" roughness={0.9} />
       </mesh>
 
-      <group position={[0, 0.47, 0.06]}>
+      <group position={[0, 0.42, 0.08]}>
         <group position={[-0.62, 0, 0]}>
           <LiveDot closed={closed} />
         </group>
@@ -112,7 +132,7 @@ export function StoreSign({
         color={INK}
         anchorX="center"
         anchorY="middle"
-        position={[0, 0.02, 0.06]}
+        position={[0, 0.02, 0.08]}
       >
         {config.sign.title}
       </Text>
@@ -124,7 +144,7 @@ export function StoreSign({
           color="#706a63"
           anchorX="center"
           anchorY="middle"
-          position={[0, -0.45, 0.06]}
+          position={[0, -0.4, 0.08]}
         >
           by {config.sign.sellerName}
         </Text>

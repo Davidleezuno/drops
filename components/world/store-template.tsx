@@ -7,26 +7,39 @@ import type { Product } from '@/lib/types'
 import type { Announcement } from '@/lib/use-drop-social'
 import type { SceneConfig } from '@/lib/world/scene-config'
 
-import { CounterClutter, INK, Plant, RoundedRect, WallArt } from './decor'
+import {
+  Awning,
+  CounterClutter,
+  INK,
+  PendantLamp,
+  Plant,
+  RoundedRect,
+  StringLights,
+  WallArt,
+} from './decor'
 import { ProductFrame } from './product-frame'
 import { StoreSign } from './store-sign'
 import { WallTicker } from './wall-ticker'
 
 const WALL = '#f7f1e6'
-const FLOOR = '#ddccb4'
+// Warm oak plank tones; the darker base plane shows through as gap lines.
+const FLOOR_BASE = '#c6b291'
+const PLANK_TONES = ['#e0cfb6', '#d8c4a7', '#dcc9ae'] as const
 const ROOM = { width: 14, depth: 10, height: 3.2 } as const
 const DOOR = { width: 2.4, height: 2.45 } as const
 
 function Lighting({ ambience, accent }: { ambience: SceneConfig['ambience']; accent: string }) {
   const settings = {
-    warm: { ambient: 1.25, key: 2.1, fill: 1.25, keyColor: '#ffeed2' },
+    warm: { ambient: 1.25, key: 2.1, fill: 1.35, keyColor: '#ffe8c9' },
     hype: { ambient: 0.95, key: 2.5, fill: 0.75, keyColor: '#edf4ff' },
     minimal: { ambient: 1.5, key: 1.7, fill: 1.45, keyColor: '#fffdf7' },
   }[ambience]
 
   return (
     <>
-      <hemisphereLight args={['#eaf2ff', '#d9b98c', settings.ambient]} />
+      {/* Sky tone kept warm: a cool-blue hemisphere turns the side walls
+          (which face away from the key light) sterile gray. */}
+      <hemisphereLight args={['#f3ead9', '#d9b98c', settings.ambient]} />
       <directionalLight
         position={[4.5, 7, 4]}
         intensity={settings.key}
@@ -62,10 +75,26 @@ function RoomShell() {
 
   return (
     <>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      {/* Wood plank floor: strips over a darker base that reads as gap lines */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[ROOM.width, ROOM.depth]} />
-        <meshStandardMaterial color={FLOOR} roughness={0.96} />
+        <meshStandardMaterial color={FLOOR_BASE} roughness={0.98} />
       </mesh>
+      {Array.from({ length: 9 }, (_, i) => {
+        const plankDepth = ROOM.depth / 9
+        const z = -halfD + plankDepth / 2 + i * plankDepth
+        return (
+          <mesh
+            key={i}
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[0, 0.005, z]}
+            receiveShadow
+          >
+            <planeGeometry args={[ROOM.width, plankDepth - 0.03]} />
+            <meshStandardMaterial color={PLANK_TONES[i % 3]} roughness={0.96} />
+          </mesh>
+        )
+      })}
 
       <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, ROOM.height, 0]}>
         <planeGeometry args={[ROOM.width, ROOM.depth]} />
@@ -173,6 +202,20 @@ function Decor({ ambience, accent }: { ambience: SceneConfig['ambience']; accent
 
   return (
     <>
+      {/* Scalloped awning over the doorway — the welcome gesture */}
+      <Awning position={[0, 2.62, halfD - 0.04]} accent={accent} />
+
+      {/* Visible light sources: string bulbs + pendants flanking the counter.
+          `minimal` keeps the bare gallery ceiling. */}
+      {!sparse && (
+        <>
+          <StringLights from={[-6.85, 3.05, -1.4]} to={[6.85, 3.05, -1.4]} />
+          <StringLights from={[-6.85, 3.05, 1.9]} to={[6.85, 3.05, 1.9]} />
+          <PendantLamp position={[-2.9, 3.2, -4.05]} />
+          <PendantLamp position={[2.9, 3.2, -4.05]} />
+        </>
+      )}
+
       {/* Entrance mat — the one accent-colored surface on the floor */}
       <RoundedRect
         width={2.1}
@@ -272,12 +315,13 @@ export function StoreTemplate({
       <RoomShell />
       <Decor ambience={config.ambience} accent={accent} />
 
-      {/* Quiet accent edge-lighting, not painted architecture. */}
-      <mesh position={[-6.76, 0.42, 0]}>
+      {/* Quiet accent trim mounted flush on the walls — floating it off the
+          surface reads as a glitch from oblique angles. */}
+      <mesh position={[-6.97, 0.42, 0]}>
         <boxGeometry args={[0.035, 0.035, 8.6]} />
         <meshBasicMaterial color={accent} transparent opacity={0.7} />
       </mesh>
-      <mesh position={[6.76, 0.42, 0]}>
+      <mesh position={[6.97, 0.42, 0]}>
         <boxGeometry args={[0.035, 0.035, 8.6]} />
         <meshBasicMaterial color={accent} transparent opacity={0.7} />
       </mesh>

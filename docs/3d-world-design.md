@@ -6,9 +6,11 @@
 
 ## 1. The one-line direction
 
-**A small, daylit gallery-shop: warm white room, ink details, the seller's photos as the only saturated things in it.** Nike-store cleanliness at architectural scale; the warmth comes from light temperature, material softness, and other live shoppers — not from clutter or decoration.
+**A small, warmly lit neighborhood shop — the front room of someone's craft.** Warm white walls and ink details stay, but the room is furnished like a home-based business, not a gallery: wood planks underfoot, a hand-hung wooden fascia sign, string bulbs and pendant lamps you can actually see, a scalloped awning over the door. The feeling on entry is *"someone made this place, and they're glad you came."* The warmth comes from visible, humble light fixtures, tactile materials, and other live shoppers — never from clutter.
 
-The room is the "clean court." The products and the people are the "warm flame." The building must never compete with either.
+> Revised 2026-07-19. An earlier draft said "Nike-store cleanliness at architectural scale" — that direction was written when the storefront was a flat list and is retired for 3D. The flat page keeps its cleanliness; the room gets character.
+
+The room is still the quiet ground. The products and the people are the "warm flame." The building welcomes; it must never compete.
 
 ## 2. Anti-references (what this world must not feel like)
 
@@ -36,7 +38,9 @@ Map the token system onto surfaces. One neutral ramp per room, no drift — exac
 | Surface | Treatment | Token logic |
 |---|---|---|
 | Walls, ceiling | Matte warm white, very subtle roughness variation | `--background` (oklch ≈0.987 h84) |
-| Floor | Pale warm oak *or* warm light concrete — matte, **no reflections** | the warm-neutral ramp, one step down |
+| Floor | Warm oak planks — alternating tones, darker gap lines, matte, **no reflections** | the warm-neutral ramp, one step down |
+| Sign board, rope drops | Mid warm wood + rope — the hand-hung fascia, satin matte | the tactile "someone made this" layer |
+| Awning stripes, sign rim | Seller accent at reduced opacity — the two sanctioned *painted* accent moments | sun-faded canvas, never fresh paint |
 | Plinths, counter body | Pure white matte blocks, rounded top edges (~2xl radius read) | `--card` |
 | Frames, counter top edge, door trim, ticker housing | Warm ink near-black, satin matte | `--primary` — **ink is the structure**, as it is the CTA |
 | Sign glow, hero plinth halo, shelf edge-light, entrance mat | Seller accent, and nowhere else | `--seller-accent` = identity surfaces only |
@@ -45,7 +49,7 @@ Map the token system onto surfaces. One neutral ramp per room, no drift — exac
 Rules:
 
 - **Everything matte.** Roughness ≥0.8 on architecture. Gloss is how 3D looks cheap; matte is how it looks calm. The only specular thing in the room is the subtle sheen on ink frames.
-- **The accent budget is unchanged: one accent, scarce.** The seller accent appears as *light*, not paint — sign glow, plinth halo, a soft edge-light along shelves. Walls are never tinted. If you can see the accent from every camera angle at once, it's overspent.
+- **The accent budget is unchanged: one accent, scarce.** The seller accent appears mostly as *light* — sign glow, plinth halo, a soft edge-light along shelves — plus exactly two painted moments: the sign's rim and the awning's stripes, both at reduced opacity so they read sun-faded rather than freshly painted. Walls are never tinted. If the accent shouts from every camera angle at once, it's overspent.
 - **No textures with opinions.** No wallpaper, no posters, no wood grain louder than a whisper. Product photos are the only images in the room.
 
 ## 5. Light (this is 80% of the taste)
@@ -54,7 +58,8 @@ Light-mode-first means **daylight**. The room reads as mid-morning, not moody ev
 
 - **Base rig (all ambiences):** warm hemisphere ambient (sky slightly cool, ground warm bounce) + one broad soft key like window light, ~4500–5000 K. No visible sun disc, no god rays. Contact shadows under avatars/plinths on desktop; none on mobile.
 - **Every product frame gets its own quiet spotlight** — slightly warm, feathered edge, like real gallery track lighting. Products must look *lit on purpose*; this is the single highest-value polish item in the build.
-- **The sign** is the room's one glow: seller accent, soft bloom-free emissive (fake the halo with a gradient plane — real bloom is a mobile perf trap), `voice.dropTitle` in the display face, seller name beneath in sans. A small breathing live-dot beside it when the window is open — the LivePill, promoted to signage.
+- **Visible fixtures carry the warmth:** string bulbs strung across the ceiling and pendant lamps flanking the counter. Their bulbs are emissive-read material, not real lights — glow without the light-count bill. `minimal` omits them and keeps the bare gallery ceiling.
+- **The sign** is a hanging wooden fascia board — rope-hung from the ceiling, accent-painted rim, a hand-hung half-degree tilt — not a wall billboard. Its halo stays the room's one accent glow: soft bloom-free emissive (fake it with a gradient plane — real bloom is a mobile perf trap), `voice.dropTitle` in the display face, seller name beneath in sans. A small breathing live-dot beside it when the window is open — the LivePill, promoted to signage.
 - **Ambience presets** move *temperature and contrast only*, never hue and never geometry:
   - `warm` — softest key, warmest fill, lowest contrast. The home-bakery default.
   - `hype` — cooler key, +contrast, accent edge-light slightly stronger, shadows a touch harder. Energy from light, not motion.
@@ -73,7 +78,7 @@ Same three faces, same jobs, rendered with drei `<Text>`:
 
 The brief's law holds absolutely: **motion is reserved for real events, and it means nothing if idle decoration moves too.** In 3D the temptation triples; resist it.
 
-- **Idle room = still room.** No bobbing frames, no rotating products, no particle dust, no swaying plants. The one persistent motion is the sign's live-dot breathing (the genuinely-open-channel signal, same as 2D).
+- **Idle room = still room.** No bobbing frames, no rotating products, no particle dust, no swaying plants — and the sign and string lights hang tilted but *never sway*. Glow is not motion: bulbs shine constantly, no flicker, no pulse. The one persistent motion is the sign's live-dot breathing (the genuinely-open-channel signal, same as 2D).
 - **People are the ambient motion.** Avatars walking, name tags drifting past frames, reactions popping — the room feels alive exactly when it *is* alive. An empty store is quiet and still, and that's honest.
 - **Event motions, mapped from the 2D system:**
   - Claim/paid → one brief sparkle burst on that product's frame + ticker line slides in (`animate-rise` energy: rise + fade, ~0.7 s, then still).
@@ -97,7 +102,7 @@ People, drawn in the product's voice: **soft, matte, warm, a little understated*
 ## 10. Taste checklist (apply before every W3 merge)
 
 1. Screenshot test (§2): empty room looks like a real small shop, not a level.
-2. Count the accents: seller accent visible in ≤3 places from any standpoint; flame only on system moments; zero decorative color.
+2. Count the accents: seller accent visible in ≤4 places from any standpoint (sign, mat, edge-light, awning); flame only on system moments; no decorative color outside the sanctioned moments.
 3. Is anything moving right now that isn't a person, a live-dot, or an event? Delete it.
 4. Are all numbers mono-tabular, all names sans, exactly one display-face headline?
 5. Does the product photo look better lit here than it does on the flat page? If not, fix the frame spotlight before adding anything else.

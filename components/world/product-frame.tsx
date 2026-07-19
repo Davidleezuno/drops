@@ -92,13 +92,22 @@ export function ProductFrame({
       }}
     >
       <RoundedBox args={[1.55, 1.62, 0.12]} radius={0.045} smoothness={3} castShadow>
+        {/* Constant faint warm emissive lift: side faces catch little light
+            and read as pure-black slabs from oblique angles without it. */}
         <meshStandardMaterial
           color={soldOut ? '#a7a29b' : '#2d2925'}
           roughness={0.82}
-          emissive={hovered ? accent : '#000000'}
-          emissiveIntensity={hovered ? 0.25 : 0}
+          emissive={hovered ? accent : '#59493b'}
+          emissiveIntensity={hovered ? 0.25 : 0.3}
         />
       </RoundedBox>
+      {/* Frame backs are visible at grazing angles (and the hero's back faces
+          half the room): finish them with a cream panel instead of showing
+          the raw ink box. */}
+      <mesh position={[0, 0, -0.065]} rotation={[0, Math.PI, 0]}>
+        <planeGeometry args={[1.35, 1.42]} />
+        <meshStandardMaterial color="#f5f0e8" roughness={0.95} />
+      </mesh>
       <mesh position={[0, 0, 0.075]}>
         <planeGeometry args={[1.35, 1.42]} />
         <meshBasicMaterial color="#f5f0e8" />
