@@ -3,11 +3,21 @@ import { notFound } from 'next/navigation'
 import { Shell } from '@/components/ds/shell'
 import { createServiceClient } from '@/lib/db'
 import { dropWindowClosed } from '@/lib/drop-state'
-import type { Product } from '@/lib/types'
+import { storefrontThemeSchema } from '@/lib/drop-builder'
+import { storefrontScopeVars } from '@/lib/theme'
+import type { Product, StorefrontTheme } from '@/lib/types'
 
 import { DropStorefront, type StorefrontDrop } from './drop-storefront'
 
 export const dynamic = 'force-dynamic'
+
+type DropRow = StorefrontDrop & { theme: unknown }
+
+function parseTheme(theme: unknown): StorefrontTheme | null {
+  if (!theme) return null
+  const parsed = storefrontThemeSchema.safeParse(theme)
+  return parsed.success ? parsed.data : null
+}
 
 export default async function DropPage({
   params,
@@ -20,13 +30,16 @@ export default async function DropPage({
   const { data: drop } = await supabase
     .from('drops')
     .select(
-      'id, seller_name, seller_slug, drop_slug, fulfilment, delivery_fee, pickup_note, window_ends_at, status',
+      'id, seller_name, seller_slug, drop_slug, fulfilment, delivery_fee, pickup_note, window_ends_at, status, theme',
     )
     .eq('seller_slug', seller)
     .eq('drop_slug', dropSlug)
-    .maybeSingle<StorefrontDrop>()
+    .maybeSingle<DropRow>()
 
   if (!drop) notFound()
+
+  const theme = parseTheme(drop.theme)
+  const themedDrop: StorefrontDrop = { ...drop, theme }
 
   const { data: products } = await supabase
     .from('products')
@@ -37,20 +50,39 @@ export default async function DropPage({
 
   const initialEnded = dropWindowClosed(drop)
 
+  const storefront = (
+    <DropStorefront
+      drop={themedDrop}
+      initialProducts={products ?? []}
+      initialEnded={initialEnded}
+    />
+  )
+
+  const footer = (
+    <footer className="mt-auto pt-12 text-center">
+      <p className="font-mono text-xs text-muted-foreground/60">
+        a <span className="font-display text-sm font-semibold">Drops</span>{' '}
+        storefront
+      </p>
+    </footer>
+  )
+
+  if (!theme) {
+    // theme = null → today's buyer page, pixel-for-pixel.
+    return (
+      <Shell>
+        {storefront}
+        {footer}
+      </Shell>
+    )
+  }
+
   return (
     <Shell>
-      <DropStorefront
-        drop={drop}
-        initialProducts={products ?? []}
-        initialEnded={initialEnded}
-      />
-
-      <footer className="mt-auto pt-12 text-center">
-        <p className="font-mono text-xs text-muted-foreground/60">
-          a <span className="font-display text-sm font-semibold">Drops</span>{' '}
-          storefront
-        </p>
-      </footer>
+      <div style={storefrontScopeVars(theme) as React.CSSProperties}>
+        {storefront}
+      </div>
+      {footer}
     </Shell>
   )
 }

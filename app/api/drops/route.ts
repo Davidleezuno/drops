@@ -4,7 +4,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import QRCode from 'qrcode'
 
 import { createServiceClient } from '@/lib/db'
-import { createDropSchema, slugify } from '@/lib/drop-builder'
+import {
+  createDropSchema,
+  slugify,
+  type StorefrontTheme,
+} from '@/lib/drop-builder'
+import { clampTheme } from '@/lib/theme'
 
 export const runtime = 'nodejs'
 
@@ -32,9 +37,23 @@ function isOwnedProductShotUrl(value: string | null) {
   }
 }
 
+function clampSubmittedTheme(body: unknown) {
+  if (!body || typeof body !== 'object' || !('theme' in body)) return body
+  if (body.theme === null || body.theme === undefined) return body
+
+  try {
+    return {
+      ...body,
+      theme: clampTheme(body.theme as StorefrontTheme),
+    }
+  } catch {
+    return body
+  }
+}
+
 export async function POST(request: NextRequest) {
   const body = await request.json().catch(() => null)
-  const parsed = createDropSchema.safeParse(body)
+  const parsed = createDropSchema.safeParse(clampSubmittedTheme(body))
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -44,6 +63,7 @@ export async function POST(request: NextRequest) {
   }
 
   const input = parsed.data
+  const theme = input.theme ? clampTheme(input.theme) : null
   const windowEndsAt = input.windowEndsAt ? new Date(input.windowEndsAt) : null
 
   if (input.products.some((product) => !isOwnedProductShotUrl(product.imageUrl))) {
@@ -86,6 +106,7 @@ export async function POST(request: NextRequest) {
         pickup_note:
           input.fulfilment === 'delivery' ? null : input.pickupNote,
         window_ends_at: windowEndsAt ? windowEndsAt.toISOString() : null,
+        theme,
       })
       .select('id, seller_slug, drop_slug, manage_token')
       .single<CreatedDrop>()

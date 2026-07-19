@@ -23,7 +23,7 @@ export function DropHeader({
     <header className={cn("flex flex-col items-start", className)}>
       <p className="font-mono text-xs text-muted-foreground">
         {siteHost()}/{sellerSlug}/
-        <span className="font-medium text-flame">{dropSlug}</span>
+        <span className="font-medium text-seller-accent">{dropSlug}</span>
       </p>
       <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-balance">
         {sellerName}

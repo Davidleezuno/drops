@@ -1,3 +1,7 @@
+import type { StorefrontTheme } from '@/lib/drop-builder'
+
+export type { StorefrontTheme } from '@/lib/drop-builder'
+
 export type Drop = {
   id: string
   seller_name: string
@@ -9,6 +13,7 @@ export type Drop = {
   pickup_note: string | null
   window_ends_at: string | null
   status: 'live' | 'ended'
+  theme: StorefrontTheme | null
   created_at: string
 }
 

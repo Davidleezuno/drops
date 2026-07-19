@@ -11,7 +11,10 @@
     "race:proof": "node --env-file=.env.local scripts/race-proof.mjs",
     "seed": "node --env-file=.env.local scripts/seed.mjs",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "agent:smoke": "tsx scripts/smoke-draft-agent.ts",
+    "agent:eval": "tsx scripts/eval-draft-agent.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
@@ -39,6 +42,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "tsx": "^4.23.1",
+    "typescript": "^5",
+    "vitest": "^4.1.10"
   }
 }

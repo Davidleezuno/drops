@@ -3,6 +3,7 @@
 import { MapPin, Truck } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { ArchetypeLayout } from '@/components/ds/archetypes'
 import { DropHeader } from '@/components/ds/drop-header'
 import { LivePill } from '@/components/ds/live-pill'
 import { Poster } from '@/components/ds/poster'
@@ -31,6 +32,7 @@ export type StorefrontDrop = Pick<
   | 'pickup_note'
   | 'window_ends_at'
   | 'status'
+  | 'theme'
 >
 
 function mergeProduct(current: Product, incoming: Product) {
@@ -41,6 +43,22 @@ function mergeProduct(current: Product, incoming: Product) {
     // only increases. Keep a slower poll response from undoing a newer event.
     stock_sold: Math.max(current.stock_sold, incoming.stock_sold),
   }
+}
+
+/** The buyer page only has product image URLs; pick the one that best matches
+ *  the hero's sourceImageIndex, falling back to the first product with a shot. */
+function heroImageUrlFor(
+  theme: NonNullable<StorefrontDrop['theme']>,
+  products: Product[],
+): string | null {
+  if (theme.hero.source !== 'upload-crop') return null
+  const targetIndex = theme.hero.sourceImageIndex ?? 0
+  return (
+    products.find((product, index) => index === targetIndex && product.image_url)
+      ?.image_url ??
+    products.find((product) => product.image_url)?.image_url ??
+    null
+  )
 }
 
 export function DropStorefront({
@@ -179,22 +197,33 @@ export function DropStorefront({
         </Poster>
       ) : (
         <>
-          <ul className="flex flex-col gap-3">
-            {products.map((product, index) => (
-              <li
-                key={product.id}
-                className="animate-rise"
-                style={{ animationDelay: `${index * 60}ms` }}
-              >
-                <ProductRow
-                  product={product}
-                  fulfilment={drop.fulfilment}
-                  deliveryFee={drop.delivery_fee}
-                  pickupNote={drop.pickup_note}
-                />
-              </li>
-            ))}
-          </ul>
+          {drop.theme ? (
+            <ArchetypeLayout
+              theme={drop.theme}
+              products={products}
+              fulfilment={drop.fulfilment}
+              deliveryFee={drop.delivery_fee}
+              pickupNote={drop.pickup_note}
+              heroImageUrl={heroImageUrlFor(drop.theme, products)}
+            />
+          ) : (
+            <ul className="flex flex-col gap-3">
+              {products.map((product, index) => (
+                <li
+                  key={product.id}
+                  className="animate-rise"
+                  style={{ animationDelay: `${index * 60}ms` }}
+                >
+                  <ProductRow
+                    product={product}
+                    fulfilment={drop.fulfilment}
+                    deliveryFee={drop.delivery_fee}
+                    pickupNote={drop.pickup_note}
+                  />
+                </li>
+              ))}
+            </ul>
+          )}
 
           <section className="mt-8">
             <h2 className="font-mono text-xs tracking-widest text-muted-foreground uppercase">

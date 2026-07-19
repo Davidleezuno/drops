@@ -2,61 +2,20 @@ import { generateText, Output } from 'ai'
 import { NextResponse } from 'next/server'
 
 import { extractedMenuSchema } from '@/lib/drop-builder'
+import { readValidatedImages } from '@/lib/draft-images'
 
 export const maxDuration = 30
 export const runtime = 'nodejs'
 
-const MAX_IMAGE_BYTES = 4 * 1024 * 1024
-const MAX_IMAGE_COUNT = 5
-const MAX_TOTAL_IMAGE_BYTES = 4 * 1024 * 1024
 const DEFAULT_MODEL = 'openai/gpt-5.6-terra'
 const DEFAULT_FALLBACK_MODEL = 'anthropic/claude-sonnet-4.6'
 
 export async function POST(request: Request) {
-  const formData = await request.formData().catch(() => null)
-  const submittedImages = formData?.getAll('images') ?? []
-  const legacyImage = formData?.get('image')
-  const images = submittedImages.length
-    ? submittedImages
-    : legacyImage
-      ? [legacyImage]
-      : []
-
-  if (
-    !images.length ||
-    images.some(
-      (image) =>
-        !(image instanceof File) || !image.type.startsWith('image/'),
-    )
-  ) {
+  const images = await readValidatedImages(request)
+  if (!Array.isArray(images)) {
     return NextResponse.json(
-      { error: 'Choose one or more menu or product images to continue.' },
-      { status: 400 },
-    )
-  }
-
-  if (images.length > MAX_IMAGE_COUNT) {
-    return NextResponse.json(
-      { error: `Use up to ${MAX_IMAGE_COUNT} images at a time.` },
-      { status: 400 },
-    )
-  }
-
-  const imageFiles = images as File[]
-  const totalImageBytes = imageFiles.reduce(
-    (total, image) => total + image.size,
-    0,
-  )
-
-  if (
-    imageFiles.some(
-      (image) => image.size === 0 || image.size > MAX_IMAGE_BYTES,
-    ) ||
-    totalImageBytes > MAX_TOTAL_IMAGE_BYTES
-  ) {
-    return NextResponse.json(
-      { error: 'Keep the combined photo upload under 4 MB.' },
-      { status: 400 },
+      { error: images.error },
+      { status: images.status },
     )
   }
 
@@ -65,13 +24,11 @@ export async function POST(request: Request) {
     process.env.EXTRACT_FALLBACK_MODEL || DEFAULT_FALLBACK_MODEL
 
   try {
-    const imageParts = await Promise.all(
-      imageFiles.map(async (image) => ({
-        type: 'image' as const,
-        image: new Uint8Array(await image.arrayBuffer()),
-        mediaType: image.type,
-      })),
-    )
+    const imageParts = images.map((image) => ({
+      type: 'image' as const,
+      image: image.bytes,
+      mediaType: image.mediaType,
+    }))
 
     const { output } = await generateText({
       model,
@@ -90,9 +47,9 @@ export async function POST(request: Request) {
             {
               type: 'text',
               text:
-                imageFiles.length === 1
+                images.length === 1
                   ? 'This image is a seller menu. Extract every unique purchasable product, its variant when present, and its listed price.'
-                  : `These ${imageFiles.length} images are parts of one seller menu. Extract every unique purchasable product, its variant when present, and its listed price across all of them.`,
+                  : `These ${images.length} images are parts of one seller menu. Extract every unique purchasable product, its variant when present, and its listed price across all of them.`,
             },
             ...imageParts,
           ],

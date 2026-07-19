@@ -18,15 +18,18 @@ import {
 import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react'
 
 import { DraftItemCard, type ProductDraft } from '@/components/ds/draft-item-card'
+import { StorefrontCard } from '@/components/ds/storefront-card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import type { DropDraft, StorefrontTheme } from '@/lib/drop-builder'
 import { siteHost, slugify } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
 type Fulfilment = 'pickup' | 'delivery' | 'both'
 type Phase = 'upload' | 'review' | 'success'
 type WindowPreset = 'today' | 'week' | 'month'
+type ShuffleNudge = 'bolder' | 'calmer'
 
 type PublishedDrop = {
   buyerUrl: string
@@ -198,6 +201,15 @@ export function DropBuilder() {
   const [productShotErrors, setProductShotErrors] = useState<
     Record<string, string>
   >({})
+  const [theme, setTheme] = useState<StorefrontTheme | null>(null)
+  const [paletteCandidates, setPaletteCandidates] = useState<
+    StorefrontTheme['accent'][]
+  >([])
+  const [needsInput, setNeedsInput] = useState<DropDraft['needsInput']>([])
+  const [shuffling, setShuffling] = useState(false)
+  const [originalImages, setOriginalImages] = useState<
+    { blob: Blob; name: string }[]
+  >([])
 
   const sellerSlug = slugify(sellerName, 'your-name')
   const cleanDropSlug = slugify(dropSlug, 'drops')
@@ -414,6 +426,32 @@ export function DropBuilder() {
     }
   }
 
+  async function fetchDraft(
+    images: Blob[],
+    fileNames: string[],
+    nudge?: ShuffleNudge,
+  ): Promise<DropDraft> {
+    const formData = new FormData()
+    images.forEach((image, index) => {
+      formData.append('images', image, fileNames[index] ?? `menu-${index + 1}.jpg`)
+    })
+    if (nudge) formData.set('nudge', nudge)
+
+    const response = await fetch('/api/draft', {
+      method: 'POST',
+      body: formData,
+    })
+    const result = (await response.json()) as DropDraft & { error?: string }
+
+    if (!response.ok || !result.products?.length) {
+      throw new Error(
+        result.error ||
+          'We could not find any items with prices in those photos. Try a clearer photo, or add items by hand.',
+      )
+    }
+    return result
+  }
+
   async function extract(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!selectedImages.length) return
@@ -430,38 +468,14 @@ export function DropBuilder() {
           prepareImage(file, maxBytesPerImage),
         ),
       )
-      const formData = new FormData()
-      images.forEach((image, index) => {
-        formData.append('images', image, `menu-${index + 1}.jpg`)
-      })
-
-      const response = await fetch('/api/extract', {
-        method: 'POST',
-        body: formData,
-      })
-      const result = (await response.json()) as {
-        products?: Array<{
-          name: string
-          variant: string | null
-          price: number
-          sourceImageIndex: number
-        }>
-        error?: string
-      }
-
-      if (!response.ok || !result.products?.length) {
-        throw new Error(
-          result.error ||
-            'We could not find any items with prices in those photos. Try a clearer photo, or add items by hand.',
-        )
-      }
+      const fileNames = selectedImages.map(
+        ({ file }) => file.name || `menu.jpg`,
+      )
+      const result = await fetchDraft(images, fileNames)
 
       const savedImages = await Promise.allSettled(
         images.map((image, index) =>
-          saveUploadedProductShot(
-            image,
-            selectedImages[index]?.file.name || `source-${index + 1}.jpg`,
-          ),
+          saveUploadedProductShot(image, fileNames[index]),
         ),
       )
       const imageUrls = savedImages.map((saved) =>
@@ -487,6 +501,10 @@ export function DropBuilder() {
             ]),
         ),
       )
+      setTheme(result.theme)
+      setPaletteCandidates(result.paletteCandidates)
+      setNeedsInput(result.needsInput)
+      setOriginalImages(images.map((blob, index) => ({ blob, name: fileNames[index] })))
       setPhase('review')
     } catch (caught) {
       setError(
@@ -496,6 +514,30 @@ export function DropBuilder() {
       )
     } finally {
       setExtracting(false)
+    }
+  }
+
+  async function shuffle(nudge: ShuffleNudge) {
+    if (!originalImages.length) return
+    setShuffling(true)
+    setError(null)
+    try {
+      const result = await fetchDraft(
+        originalImages.map(({ blob }) => blob),
+        originalImages.map(({ name }) => name),
+        nudge,
+      )
+      // Shuffle only swaps the look — never touch the seller's product edits.
+      setTheme(result.theme)
+      setPaletteCandidates(result.paletteCandidates)
+    } catch (caught) {
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Shuffle came back empty. Try again.',
+      )
+    } finally {
+      setShuffling(false)
     }
   }
 
@@ -526,6 +568,7 @@ export function DropBuilder() {
           deliveryFee: fulfilment === 'pickup' ? 0 : Number(deliveryFee),
           pickupNote:
             fulfilment === 'delivery' ? null : pickupNote.trim() || null,
+          theme,
         }),
       })
       const result = (await response.json()) as PublishedDrop & {
@@ -763,10 +806,38 @@ export function DropBuilder() {
             <Plus />
             Add an item
           </Button>
+
+          {needsInput.includes('stock') && (
+            <p className="mt-3 text-xs font-medium text-destructive">
+              We couldn&rsquo;t read stock counts from your photos — set how
+              many you have of each item.
+            </p>
+          )}
         </section>
+
+        {theme && paletteCandidates.length > 0 && (
+          <div className="mt-9">
+            <StorefrontCard
+              theme={theme}
+              paletteCandidates={paletteCandidates}
+              products={products}
+              sellerName={sellerName}
+              dropSlug={cleanDropSlug}
+              shuffling={shuffling}
+              onChangeTheme={setTheme}
+              onShuffle={shuffle}
+            />
+          </div>
+        )}
 
         <section className="mt-9 border-t border-border pt-8">
           <h2 className="font-display text-2xl font-semibold">Selling window</h2>
+          {needsInput.includes('window') && (
+            <p className="mt-1.5 text-xs font-medium text-destructive">
+              We couldn&rsquo;t tell when this closes from your photos — pick a
+              window so buyers know.
+            </p>
+          )}
           <p className="mt-1.5 text-sm text-muted-foreground">
             Buyers see a countdown. The link stops selling when it hits zero.
           </p>
@@ -898,6 +969,12 @@ export function DropBuilder() {
                 required
                 onChange={(event) => setDeliveryFee(event.target.value)}
               />
+              {needsInput.includes('deliveryFee') && (
+                <p className="text-xs font-medium text-destructive">
+                  We couldn&rsquo;t see a delivery fee in your photos — set one
+                  if you charge for delivery.
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
                 Added to the buyer&rsquo;s total at checkout.
               </p>
@@ -917,6 +994,12 @@ export function DropBuilder() {
                 placeholder="e.g. Hougang, exact address after payment"
                 onChange={(event) => setPickupNote(event.target.value)}
               />
+              {needsInput.includes('pickup') && (
+                <p className="text-xs font-medium text-destructive">
+                  We couldn&rsquo;t see pickup details in your photos — tell
+                  buyers where to collect.
+                </p>
+              )}
             </div>
           )}
         </section>
