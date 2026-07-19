@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 
 import { Shell } from '@/components/ds/shell'
 import { createServiceClient } from '@/lib/db'
+import { dropWindowClosed } from '@/lib/drop-state'
 import type { Product } from '@/lib/types'
 
 import { DropStorefront, type StorefrontDrop } from './drop-storefront'
@@ -34,8 +35,7 @@ export default async function DropPage({
     .order('price', { ascending: false })
     .returns<Product[]>()
 
-  const initialEnded =
-    drop.status === 'ended' || new Date(drop.window_ends_at) <= new Date()
+  const initialEnded = dropWindowClosed(drop)
 
   return (
     <Shell>

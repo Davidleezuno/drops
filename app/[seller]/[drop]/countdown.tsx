@@ -43,5 +43,7 @@ export function Countdown({
     }
   }, [endsAt, onEnd])
 
-  return <span>Ends in {formatRemaining(remaining)}</span>
+  return (
+    <span suppressHydrationWarning>Ends in {formatRemaining(remaining)}</span>
+  )
 }

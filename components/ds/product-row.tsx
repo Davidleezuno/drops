@@ -1,7 +1,8 @@
 import Image from "next/image"
 
 import { Price } from "@/components/ds/price"
-import { StockBadge, stockState } from "@/components/ds/stock-badge"
+import { StockBadge } from "@/components/ds/stock-badge"
+import { isSoldOut, stockRemaining } from "@/lib/drop-state"
 import type { Product } from "@/lib/types"
 import { cn } from "@/lib/utils"
 
@@ -24,8 +25,8 @@ export function ProductRow({
   pickupNote: string | null
   className?: string
 }) {
-  const remaining = product.stock_total - product.stock_sold
-  const soldOut = stockState(remaining) === "soldout"
+  const remaining = stockRemaining(product)
+  const soldOut = isSoldOut(product)
 
   return (
     <article
@@ -62,8 +63,9 @@ export function ProductRow({
           />
         </div>
         <StockBadge
-          key={remaining}
+          key={remaining ?? -product.stock_sold}
           remaining={remaining}
+          sold={product.stock_sold}
           className="animate-tick"
         />
       </div>

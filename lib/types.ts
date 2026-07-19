@@ -7,7 +7,7 @@ export type Drop = {
   fulfilment: 'pickup' | 'delivery' | 'both'
   delivery_fee: number
   pickup_note: string | null
-  window_ends_at: string
+  window_ends_at: string | null
   status: 'live' | 'ended'
   created_at: string
 }
@@ -21,7 +21,7 @@ export type Product = {
   variant: string | null
   image_url: string | null
   price: number
-  stock_total: number
+  stock_total: number | null
   stock_sold: number
 }
 

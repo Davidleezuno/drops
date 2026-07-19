@@ -1,7 +1,9 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 
 import { fulfilmentIsAvailable, parseBuyRequest } from '@/lib/checkout'
 import { createServiceClient } from '@/lib/db'
+import { dropWindowClosed, stockRemaining } from '@/lib/drop-state'
+import { broadcastClaim } from '@/lib/social-server'
 import {
   createHitPayPaymentRequest,
   HitPayRequestError,
@@ -56,15 +58,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Product not found' }, { status: 404 })
   }
 
-  const dropEnded =
-    product.drop.status === 'ended' ||
-    new Date(product.drop.window_ends_at).getTime() <= Date.now()
-
-  if (dropEnded) {
+  if (dropWindowClosed(product.drop)) {
     return NextResponse.json({ error: 'This drop has ended' }, { status: 409 })
   }
 
-  if (product.stock_total - product.stock_sold < details.quantity) {
+  const remaining = stockRemaining(product)
+  if (remaining !== null && remaining < details.quantity) {
     return NextResponse.json(
       { error: 'There is not enough stock left for that quantity' },
       { status: 409 },
@@ -122,7 +121,7 @@ export async function POST(request: Request) {
       purpose: `${product.drop.seller_name} — ${product.name} ×${details.quantity}${deliveryDescription}`,
       buyerName: details.buyerName,
       buyerContact: details.buyerContact,
-      redirectUrl: `${appUrl}/${product.drop.seller_slug}/${product.drop.drop_slug}`,
+      redirectUrl: `${appUrl}/order/${order.id}`,
     })
   } catch (error) {
     console.error('HitPay payment request failed', error)
@@ -145,6 +144,16 @@ export async function POST(request: Request) {
       { status: 500 },
     )
   }
+
+  // Social layer (future-ideas §1b): announce the claim after responding.
+  after(() =>
+    broadcastClaim({
+      dropId: product.drop.id,
+      buyerName: details.buyerName,
+      productName: product.name,
+      qty: details.quantity,
+    }),
+  )
 
   return NextResponse.json(
     { checkoutUrl: paymentRequest.url, orderId: order.id },

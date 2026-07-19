@@ -75,6 +75,7 @@
   /* Motion — reserved for real events (counter ticks, state flips) */
   --animate-tick: tick 0.5s cubic-bezier(0.22, 1, 0.36, 1);
   --animate-rise: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-float-up: float-up 2s ease-out forwards;
 }
 
 :root {
@@ -178,6 +179,21 @@
   }
   100% {
     transform: scale(1);
+  }
+}
+
+/* Reaction floaters (future-ideas §1c) — transform/opacity only */
+@keyframes float-up {
+  0% {
+    opacity: 0;
+    transform: translateY(0) translateX(0) scale(0.85);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-42svh) translateX(var(--drift, 0px)) scale(1.15);
   }
 }
 

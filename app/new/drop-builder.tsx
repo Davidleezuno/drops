@@ -182,7 +182,10 @@ export function DropBuilder() {
   const [dragActive, setDragActive] = useState(false)
   const [products, setProducts] = useState<ProductDraft[]>([])
   const [windowEndsAt, setWindowEndsAt] = useState(() => endOfWindow('today'))
-  const [windowPreset, setWindowPreset] = useState<WindowPreset | null>('today')
+  // 'open' = no window at all (future-ideas §3); null = custom datetime.
+  const [windowPreset, setWindowPreset] = useState<WindowPreset | 'open' | null>(
+    'today',
+  )
   const [fulfilment, setFulfilment] = useState<Fulfilment>('pickup')
   const [deliveryFee, setDeliveryFee] = useState('5')
   const [pickupNote, setPickupNote] = useState('')
@@ -512,10 +515,13 @@ export function DropBuilder() {
             name: product.name,
             variant: product.variant.trim() || null,
             price: Number(product.price),
-            stock: Number(product.stock),
+            stock: product.stock.trim() === '' ? null : Number(product.stock),
             imageUrl: product.imageUrl,
           })),
-          windowEndsAt: new Date(windowEndsAt).toISOString(),
+          windowEndsAt:
+            windowPreset === 'open'
+              ? null
+              : new Date(windowEndsAt).toISOString(),
           fulfilment,
           deliveryFee: fulfilment === 'pickup' ? 0 : Number(deliveryFee),
           pickupNote:
@@ -695,9 +701,12 @@ export function DropBuilder() {
 
   if (phase === 'review') {
     const closesAt = new Date(windowEndsAt)
-    const closesLabel = Number.isNaN(closesAt.getTime())
-      ? 'Pick a closing time'
-      : `Closes ${closingTime.format(closesAt)}`
+    const closesLabel =
+      windowPreset === 'open'
+        ? 'No closing time — link stays live'
+        : Number.isNaN(closesAt.getTime())
+          ? 'Pick a closing time'
+          : `Closes ${closingTime.format(closesAt)}`
 
     return (
       <form className="flex flex-1 flex-col" onSubmit={publish}>
@@ -762,13 +771,13 @@ export function DropBuilder() {
             Buyers see a countdown. The link stops selling when it hits zero.
           </p>
 
-          <div className="mt-4 grid grid-cols-4 gap-2" aria-label="Selling window">
+          <div className="mt-4 grid grid-cols-5 gap-2" aria-label="Selling window">
             {WINDOW_PRESETS.map((preset) => (
               <Button
                 key={preset.value}
                 type="button"
                 variant={windowPreset === preset.value ? 'default' : 'outline'}
-                className="h-11 px-2 text-xs sm:text-sm"
+                className="h-11 px-1.5 text-xs sm:text-sm"
                 aria-pressed={windowPreset === preset.value}
                 onClick={() => {
                   setWindowPreset(preset.value)
@@ -780,14 +789,30 @@ export function DropBuilder() {
             ))}
             <Button
               type="button"
+              variant={windowPreset === 'open' ? 'default' : 'outline'}
+              className="h-11 px-1.5 text-xs sm:text-sm"
+              aria-pressed={windowPreset === 'open'}
+              onClick={() => setWindowPreset('open')}
+            >
+              Keep open
+            </Button>
+            <Button
+              type="button"
               variant={windowPreset === null ? 'default' : 'outline'}
-              className="h-11 px-2 text-xs sm:text-sm"
+              className="h-11 px-1.5 text-xs sm:text-sm"
               aria-pressed={windowPreset === null}
               onClick={() => setWindowPreset(null)}
             >
               Custom
             </Button>
           </div>
+
+          {windowPreset === 'open' && (
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+              No countdown. The link stays live until you end it from your
+              console — a permanent storefront.
+            </p>
+          )}
 
           {windowPreset === null ? (
             <div className="mt-3 space-y-1.5">

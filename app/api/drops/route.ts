@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
   }
 
   const input = parsed.data
-  const windowEndsAt = new Date(input.windowEndsAt)
+  const windowEndsAt = input.windowEndsAt ? new Date(input.windowEndsAt) : null
 
   if (input.products.some((product) => !isOwnedProductShotUrl(product.imageUrl))) {
     return NextResponse.json(
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  if (windowEndsAt <= new Date()) {
+  if (windowEndsAt && windowEndsAt <= new Date()) {
     return NextResponse.json(
       { error: 'Choose a window end time in the future.' },
       { status: 400 },
@@ -85,7 +85,7 @@ export async function POST(request: NextRequest) {
           input.fulfilment === 'pickup' ? 0 : input.deliveryFee,
         pickup_note:
           input.fulfilment === 'delivery' ? null : input.pickupNote,
-        window_ends_at: windowEndsAt.toISOString(),
+        window_ends_at: windowEndsAt ? windowEndsAt.toISOString() : null,
       })
       .select('id, seller_slug, drop_slug, manage_token')
       .single<CreatedDrop>()

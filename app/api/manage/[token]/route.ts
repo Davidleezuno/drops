@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import {
   endManagedDrop,
   getManageSnapshot,
+  keepDropAlive,
   ManageConsoleError,
 } from '@/lib/manage'
 
@@ -47,13 +48,20 @@ export async function GET(
 }
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ token: string }> },
 ) {
   const { token } = await params
+  const body = (await request.json().catch(() => null)) as {
+    action?: unknown
+  } | null
+  const action = body?.action === 'keep_alive' ? 'keep_alive' : 'end'
 
   try {
-    const snapshot = await endManagedDrop(token)
+    const snapshot =
+      action === 'keep_alive'
+        ? await keepDropAlive(token)
+        : await endManagedDrop(token)
     if (!snapshot) return notFoundResponse()
 
     return NextResponse.json(snapshot, { headers: PRIVATE_HEADERS })

@@ -6,6 +6,7 @@ import {
   MapPin,
   PackageCheck,
   Square,
+  Store,
   Truck,
 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -15,6 +16,7 @@ import { LivePill } from '@/components/ds/live-pill'
 import { Price } from '@/components/ds/price'
 import { StatusPill } from '@/components/ds/status-pill'
 import { StockBadge } from '@/components/ds/stock-badge'
+import { WatchingPill } from '@/components/ds/watching-pill'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,9 +35,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { allSoldOut, stockRemaining } from '@/lib/drop-state'
 import { siteHost } from '@/lib/format'
 import { createClient } from '@/lib/supabase/client'
 import type { ManageOrder, ManageSnapshot, Product } from '@/lib/types'
+import { useDropSocial } from '@/lib/use-drop-social'
 
 const ORDER_POLL_INTERVAL_MS = 2_000
 
@@ -142,15 +146,6 @@ function buildPackingList(orders: ManageOrder[]) {
   )
 }
 
-function allProductsSoldOut(products: Product[]) {
-  return (
-    products.length > 0 &&
-    products.every(
-      (product) => product.stock_total - product.stock_sold <= 0,
-    )
-  )
-}
-
 export function ManageConsole({
   token,
   initialSnapshot,
@@ -162,7 +157,10 @@ export function ManageConsole({
   const [snapshot, setSnapshot] = useState(initialSnapshot)
   const [refreshError, setRefreshError] = useState<string | null>(null)
   const [ending, setEnding] = useState(false)
+  const [converting, setConverting] = useState(false)
   const refreshing = useRef(false)
+  // Observe the crowd without counting the seller as a watcher.
+  const social = useDropSocial(supabase, snapshot.drop.id, { present: false })
 
   const refreshConsole = useCallback(async () => {
     if (refreshing.current) return
@@ -222,7 +220,7 @@ export function ManageConsole({
               return {
                 ...current,
                 products,
-                settled: current.settled || allProductsSoldOut(products),
+                settled: current.settled || allSoldOut(products),
               }
             })
             void refreshConsole()
@@ -258,6 +256,31 @@ export function ManageConsole({
       if (channel) void supabase.removeChannel(channel)
     }
   }, [refreshConsole, snapshot.drop.id, supabase])
+
+  async function keepLinkAlive() {
+    const confirmed = window.confirm(
+      'Keep this link alive?\n\nThe countdown goes away and the same link becomes a permanent storefront. You can still end it any time.',
+    )
+    if (!confirmed) return
+
+    setConverting(true)
+    try {
+      const response = await fetch(`/api/manage/${encodeURIComponent(token)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'keep_alive' }),
+        cache: 'no-store',
+      })
+      if (!response.ok) throw new Error('Keep alive failed')
+
+      setSnapshot((await response.json()) as ManageSnapshot)
+      setRefreshError(null)
+    } catch {
+      setRefreshError('Could not keep the link alive. Please try again.')
+    } finally {
+      setConverting(false)
+    }
+  }
 
   async function endDropNow() {
     const confirmed = window.confirm(
@@ -323,15 +346,48 @@ export function ManageConsole({
               <PackageCheck className="size-4" />
               Drop settled
             </span>
-          ) : (
+          ) : snapshot.drop.window_ends_at ? (
             <LivePill>
               <ConsoleCountdown endsAt={snapshot.drop.window_ends_at} />
             </LivePill>
+          ) : (
+            <LivePill>Always open</LivePill>
           )}
-          <span className="font-mono text-xs text-muted-foreground">
-            closes {sgtDateTime.format(new Date(snapshot.drop.window_ends_at))} SGT
-          </span>
+          <WatchingPill count={social.watching} />
+          {snapshot.drop.window_ends_at ? (
+            <span className="font-mono text-xs text-muted-foreground">
+              closes{' '}
+              {sgtDateTime.format(new Date(snapshot.drop.window_ends_at))} SGT
+            </span>
+          ) : (
+            !snapshot.settled && (
+              <span className="font-mono text-xs text-muted-foreground">
+                permanent storefront — no closing time
+              </span>
+            )
+          )}
         </div>
+
+        {snapshot.settled && !allSoldOut(snapshot.products) && (
+          <div className="mt-5 rounded-2xl border border-border bg-card p-4">
+            <p className="text-sm font-semibold">The popup can become a store</p>
+            <p className="mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">
+              Keep the same link selling with no countdown. Your{' '}
+              <span className="font-mono">sold</span> counter keeps climbing —
+              paid orders only, as always.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              className="mt-3"
+              onClick={keepLinkAlive}
+              disabled={converting}
+            >
+              <Store />
+              {converting ? 'Reopening…' : 'Keep this link alive'}
+            </Button>
+          </div>
+        )}
       </header>
 
       {refreshError && (
@@ -407,7 +463,7 @@ export function ManageConsole({
         <Card className="py-1">
           <ul className="divide-y divide-border">
             {snapshot.products.map((product) => {
-              const remaining = product.stock_total - product.stock_sold
+              const remaining = stockRemaining(product)
               return (
                 <li
                   key={product.id}
@@ -422,12 +478,15 @@ export function ManageConsole({
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-4">
-                    <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                      {product.stock_sold}/{product.stock_total} sold
-                    </span>
+                    {product.stock_total !== null && (
+                      <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                        {product.stock_sold}/{product.stock_total} sold
+                      </span>
+                    )}
                     <StockBadge
-                      key={remaining}
+                      key={remaining ?? -product.stock_sold}
                       remaining={remaining}
+                      sold={product.stock_sold}
                       className="animate-tick"
                     />
                   </div>

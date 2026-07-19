@@ -31,7 +31,8 @@ export function BuyFlow({
   productId: string
   productName: string
   unitPrice: number
-  remaining: number
+  /** Units left, or null when the product is uncapped (future-ideas §3). */
+  remaining: number | null
   fulfilment: Fulfilment | 'both'
   deliveryFee: number
   pickupNote: string | null
@@ -55,7 +56,7 @@ export function BuyFlow({
     [deliveryFee, quantity, selectedFulfilment, unitPrice],
   )
 
-  if (remaining <= 0) {
+  if (remaining !== null && remaining <= 0) {
     return (
       <Button type="button" size="lg" className="mt-4 h-12 w-full" disabled>
         Sold out
@@ -129,7 +130,7 @@ export function BuyFlow({
             type="number"
             inputMode="numeric"
             min={1}
-            max={remaining}
+            max={remaining ?? undefined}
             value={quantity}
             onChange={(event) => setQuantity(Number(event.target.value))}
             required
@@ -225,7 +226,9 @@ export function BuyFlow({
         type="submit"
         size="lg"
         className="mt-4 h-12 w-full"
-        disabled={submitting || quantity < 1 || quantity > remaining}
+        disabled={
+          submitting || quantity < 1 || (remaining !== null && quantity > remaining)
+        }
       >
         {submitting ? (
           <>

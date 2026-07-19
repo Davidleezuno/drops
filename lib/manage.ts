@@ -1,4 +1,5 @@
 import { createServiceClient } from '@/lib/db'
+import { allSoldOut, dropWindowClosed } from '@/lib/drop-state'
 import type {
   ManageDrop,
   ManageOrder,
@@ -28,14 +29,7 @@ function orderPriority(status: OrderStatus) {
 }
 
 function consoleHasSettled(drop: ManageDrop, products: Product[]) {
-  const windowClosed = new Date(drop.window_ends_at).getTime() <= Date.now()
-  const soldOut =
-    products.length > 0 &&
-    products.every(
-      (product) => product.stock_total - product.stock_sold <= 0,
-    )
-
-  return drop.status === 'ended' || windowClosed || soldOut
+  return dropWindowClosed(drop) || allSoldOut(products)
 }
 
 export async function getManageSnapshot(
@@ -119,6 +113,32 @@ export async function getManageSnapshot(
     settled: consoleHasSettled(drop, productRows),
     refreshed_at: new Date().toISOString(),
   }
+}
+
+/**
+ * The popup that became a store (future-ideas §3): a settled drop converts to
+ * a permanent storefront — same URL, no countdown, status back to live. The
+ * link is the brand, so nothing else changes.
+ */
+export async function keepDropAlive(
+  token: string,
+): Promise<ManageSnapshot | null> {
+  const supabase = createServiceClient()
+  const { data: drop, error } = await supabase
+    .from('drops')
+    .update({ status: 'live', window_ends_at: null })
+    .eq('manage_token', token)
+    .select('id')
+    .maybeSingle<{ id: string }>()
+
+  if (error) {
+    throw new ManageConsoleError(
+      `Could not keep managed drop alive: ${error.message}`,
+    )
+  }
+  if (!drop) return null
+
+  return getManageSnapshot(token)
 }
 
 export async function endManagedDrop(

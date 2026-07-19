@@ -25,13 +25,15 @@ export const createDropSchema = z.object({
         name: z.string().trim().min(1).max(120),
         variant: z.string().trim().max(120).nullable(),
         price: z.number().positive().max(100_000),
-        stock: z.number().int().positive().max(100_000),
+        // null = no cap (future-ideas §3): sell until the seller ends it.
+        stock: z.number().int().positive().max(100_000).nullable(),
         imageUrl: z.url().max(2_000).nullable(),
       }),
     )
     .min(1)
     .max(30),
-  windowEndsAt: z.iso.datetime(),
+  // null = keep it open: a permanent storefront with no countdown.
+  windowEndsAt: z.iso.datetime().nullable(),
   fulfilment: z.enum(['pickup', 'delivery', 'both']),
   deliveryFee: z.number().min(0).max(100_000),
   pickupNote: z.string().trim().max(240).nullable(),

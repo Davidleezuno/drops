@@ -15,14 +15,35 @@ export function stockState(remaining: number): StockState {
  * recedes to quiet inventory info; low stock turns it amber; sold out is ink.
  * Realtime updates (ticket 03) re-mount with a `key` on `remaining` to fire
  * the tick animation.
+ *
+ * Uncapped products (`remaining === null`, future-ideas §3) flip to the
+ * `sold` mode: social proof compounded over time, same mono/tick language,
+ * same honesty bar (paid orders only).
  */
 export function StockBadge({
   remaining,
+  sold = 0,
   className,
 }: {
-  remaining: number
+  remaining: number | null
+  sold?: number
   className?: string
 }) {
+  if (remaining === null) {
+    if (sold <= 0) return null
+    return (
+      <span
+        data-state="sold"
+        className={cn(
+          "inline-flex shrink-0 items-center font-mono text-xs font-semibold text-foreground tabular-nums",
+          className
+        )}
+      >
+        {sold} sold
+      </span>
+    )
+  }
+
   const state = stockState(remaining)
 
   if (state === "soldout") {

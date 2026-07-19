@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
 
 import { createServiceClient } from '@/lib/db'
 import {
   getHitPayPaymentRequestStatus,
   HitPayRequestError,
 } from '@/lib/hitpay'
+import { broadcastPaidOrder } from '@/lib/social-server'
 import type { OrderStatus } from '@/lib/types'
 
 const UUID_PATTERN =
@@ -112,7 +113,7 @@ export async function POST(
     return statusResponse(order.status)
   }
 
-  const { error: settlementError } = await supabase.rpc(
+  const { data: settlementOutcome, error: settlementError } = await supabase.rpc(
     'process_hitpay_payment',
     {
       p_event_id: payment.id,
@@ -128,6 +129,12 @@ export async function POST(
       { error: 'Could not confirm payment yet' },
       { status: 500 },
     )
+  }
+
+  // Same emit point as the webhook: announce only a settlement this call
+  // performed, so a webhook/fallback race never double-announces.
+  if (settlementOutcome === 'paid') {
+    after(() => broadcastPaidOrder(order.id))
   }
 
   const { data: settledOrder, error: settledOrderError } = await supabase

@@ -202,7 +202,7 @@ export function DraftItemCard({
               max="100000"
               step="1"
               value={product.stock}
-              required
+              placeholder="No limit"
               onChange={(event) =>
                 onChange({ ...product, stock: event.target.value })
               }

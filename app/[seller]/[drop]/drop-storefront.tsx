@@ -7,9 +7,14 @@ import { DropHeader } from '@/components/ds/drop-header'
 import { LivePill } from '@/components/ds/live-pill'
 import { Poster } from '@/components/ds/poster'
 import { ProductRow } from '@/components/ds/product-row'
+import { ReactionLayer } from '@/components/ds/reaction-layer'
+import { SocialToast } from '@/components/ds/social-toast'
+import { WatchingPill } from '@/components/ds/watching-pill'
+import { allSoldOut as computeAllSoldOut } from '@/lib/drop-state'
 import { sgd } from '@/lib/format'
 import { createClient } from '@/lib/supabase/client'
 import type { Drop, Product } from '@/lib/types'
+import { useDropSocial } from '@/lib/use-drop-social'
 
 import { Countdown } from './countdown'
 
@@ -50,10 +55,9 @@ export function DropStorefront({
   const supabase = useMemo(() => createClient(), [])
   const [products, setProducts] = useState(initialProducts)
   const [windowClosed, setWindowClosed] = useState(initialEnded)
+  const social = useDropSocial(supabase, drop.id)
 
-  const allSoldOut =
-    products.length > 0 &&
-    products.every((product) => product.stock_total - product.stock_sold <= 0)
+  const allSoldOut = computeAllSoldOut(products)
 
   const closeWindow = useCallback(() => setWindowClosed(true), [])
 
@@ -142,12 +146,24 @@ export function DropStorefront({
         dropSlug={drop.drop_slug}
         className="mb-8"
       >
-        {!windowClosed && (
+        {!windowClosed && drop.window_ends_at && (
           <LivePill>
             <Countdown endsAt={drop.window_ends_at} onEnd={closeWindow} />
           </LivePill>
         )}
+        <WatchingPill count={social.watching} />
       </DropHeader>
+
+      {/* Social overlays serve the race; the ended poster gets silence. */}
+      {!windowClosed && (
+        <>
+          <SocialToast announcement={social.announcement} />
+          <ReactionLayer
+            subscribe={social.subscribeToReactions}
+            react={social.react}
+          />
+        </>
+      )}
 
       {windowClosed ? (
         <Poster variant="ended" title="This drop has ended" className="flex-1">
