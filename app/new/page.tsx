@@ -9,7 +9,9 @@ export const metadata = {
 
 export default function NewDropPage() {
   return (
-    <Shell>
+    // Wider than the buyer shell so the review step can lay products out in a
+    // grid; each phase re-centers its own content to the width it wants.
+    <Shell width="console">
       <DropBuilder />
     </Shell>
   )

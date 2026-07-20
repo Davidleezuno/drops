@@ -220,7 +220,7 @@ export function DraftItemCard({
           onClick={() => onImprove(product)}
         >
           {busy ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
-          {busy ? 'Working…' : 'AI photo'}
+          {busy ? 'Working…' : 'Enhance Image'}
         </Button>
       </div>
 
@@ -317,7 +317,7 @@ export function DraftItemCard({
             onClick={() => setChoicesOpen((current) => !current)}
           >
             <span>
-              <span className="block text-sm font-medium">Buyer choices</span>
+              <span className="block text-sm font-medium">Customize</span>
               <span className="mt-0.5 block text-xs text-muted-foreground">
                 {choiceSummary || 'Sizes, flavours or preferences'}
               </span>
