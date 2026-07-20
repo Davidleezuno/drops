@@ -4,7 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { useEffect, useState } from 'react'
 
 import { allSoldOut } from '@/lib/drop-state'
-import type { Product } from '@/lib/types'
+import type { Product, ProductVariant } from '@/lib/types'
 
 const POLL_INTERVAL_MS = 5_000
 
@@ -13,6 +13,14 @@ export function mergeLiveProduct(current: Product, incoming: Product) {
     ...current,
     ...incoming,
     // Paid stock is monotonic; a slower poll must never undo a newer event.
+    stock_sold: Math.max(current.stock_sold, incoming.stock_sold),
+  }
+}
+
+function mergeLiveVariant(current: ProductVariant, incoming: ProductVariant) {
+  return {
+    ...current,
+    ...incoming,
     stock_sold: Math.max(current.stock_sold, incoming.stock_sold),
   }
 }
@@ -39,7 +47,7 @@ export function useLiveDropProducts({
     async function refreshProducts() {
       const { data, error } = await supabase
         .from('products')
-        .select('*')
+        .select('*, variants:product_variants(*)')
         .eq('drop_id', dropId)
         .order('price', { ascending: false })
         .returns<Product[]>()
@@ -76,6 +84,31 @@ export function useLiveDropProducts({
               product.id === incoming.id
                 ? mergeLiveProduct(product, incoming)
                 : product,
+            ),
+          )
+        },
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'product_variants',
+        },
+        (payload) => {
+          const incoming = payload.new as ProductVariant
+          setProducts((current) =>
+            current.map((product) =>
+              product.id !== incoming.product_id
+                ? product
+                : {
+                    ...product,
+                    variants: product.variants.map((variant) =>
+                      variant.id === incoming.id
+                        ? mergeLiveVariant(variant, incoming)
+                        : variant,
+                    ),
+                  },
             ),
           )
         },

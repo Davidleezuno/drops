@@ -67,6 +67,25 @@ function serviceClient() {
         }
       }
 
+      if (table === 'products') {
+        return {
+          insert(values: Array<Record<string, unknown>>) {
+            return {
+              select() {
+                return {
+                  async returns() {
+                    return {
+                      data: values.map((_, index) => ({ id: `product-${index + 1}` })),
+                      error: null,
+                    }
+                  },
+                }
+              },
+            }
+          },
+        }
+      }
+
       return {
         async insert() {
           return { error: null }

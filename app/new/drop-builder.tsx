@@ -77,17 +77,46 @@ type SelectedImage = {
 function newProduct(product?: {
   name: string
   variant: string | null
-  price: number
+  price: number | null
+  stock: number | null
+  inventoryChoice: {
+    name: string
+    values: Array<{
+      label: string
+      price: number | null
+      stock: number | null
+    }>
+  } | null
+  customizations: Array<{ name: string; values: string[] }>
   sourceImageIndex?: number
 }): ProductDraft {
   return {
     id: crypto.randomUUID(),
     name: product?.name ?? '',
     variant: product?.variant ?? '',
-    price: product ? String(product.price) : '',
-    stock: '10',
+    price: product?.price === null || !product ? '' : String(product.price),
+    stock: product?.stock === null || !product ? '' : String(product.stock),
     imageUrl: null,
     imageSource: null,
+    inventoryChoiceName: product?.inventoryChoice?.name ?? '',
+    variants:
+      product?.inventoryChoice?.values.map((variant) => ({
+        id: crypto.randomUUID(),
+        label: variant.label,
+        price:
+          variant.price === null
+            ? product.price === null
+              ? ''
+              : String(product.price)
+            : String(variant.price),
+        stock: variant.stock === null ? '' : String(variant.stock),
+      })) ?? [],
+    customizations:
+      product?.customizations.map((group) => ({
+        id: crypto.randomUUID(),
+        name: group.name,
+        values: group.values,
+      })) ?? [],
   }
 }
 
@@ -211,6 +240,7 @@ export function DropBuilder() {
   const [originalImages, setOriginalImages] = useState<
     { blob: Blob; name: string }[]
   >([])
+  const [choiceNudgeDismissed, setChoiceNudgeDismissed] = useState(false)
 
   const sellerSlug = slugify(sellerName, 'your-name')
   const cleanDropSlug = slugify(dropSlug, 'drops')
@@ -254,6 +284,48 @@ export function DropBuilder() {
         product.id === updated.id ? updated : product,
       ),
     )
+  }
+
+  function addSizesToAll() {
+    setProducts((current) =>
+      current.map((product) =>
+        product.variants.length
+          ? product
+          : {
+              ...product,
+              inventoryChoiceName: 'Size',
+              variants: ['S', 'M', 'L', 'XL'].map((label) => ({
+                id: crypto.randomUUID(),
+                label,
+                price: product.price,
+                stock: '',
+              })),
+            },
+      ),
+    )
+  }
+
+  function addChilliChoiceToAll() {
+    setProducts((current) =>
+      current.map((product) =>
+        product.customizations.some(
+          (group) => group.name.toLowerCase() === 'chilli preference',
+        )
+          ? product
+          : {
+              ...product,
+              customizations: [
+                ...product.customizations,
+                {
+                  id: crypto.randomUUID(),
+                  name: 'Chilli preference',
+                  values: ['Chilli', 'No chilli'],
+                },
+              ].slice(0, 2),
+            },
+      ),
+    )
+    setChoiceNudgeDismissed(true)
   }
 
   function addImages(files: File[]) {
@@ -492,6 +564,7 @@ export function DropBuilder() {
       })
 
       setProducts(drafts)
+      setChoiceNudgeDismissed(false)
       setProductShotErrors(
         Object.fromEntries(
           drafts
@@ -560,6 +633,27 @@ export function DropBuilder() {
             price: Number(product.price),
             stock: product.stock.trim() === '' ? null : Number(product.stock),
             imageUrl: product.imageUrl,
+            inventoryChoice:
+              product.variants.length >= 2 &&
+              product.inventoryChoiceName.trim()
+                ? {
+                    name: product.inventoryChoiceName.trim(),
+                    variants: product.variants.map((variant) => ({
+                      label: variant.label.trim(),
+                      price: Number(variant.price || product.price),
+                      stock:
+                        variant.stock.trim() === ''
+                          ? null
+                          : Number(variant.stock),
+                    })),
+                  }
+                : null,
+            customizations: product.customizations
+              .map((group) => ({
+                name: group.name.trim(),
+                values: group.values.map((value) => value.trim()).filter(Boolean),
+              }))
+              .filter((group) => group.name && group.values.length >= 2),
           })),
           windowEndsAt:
             windowPreset === 'open'
@@ -782,6 +876,54 @@ export function DropBuilder() {
         </header>
 
         <section className="mt-8 space-y-3">
+          {!choiceNudgeDismissed &&
+            theme?.vertical === 'fashion' &&
+            products.some((product) => !product.variants.length) && (
+              <div className="animate-rise rounded-2xl border border-flame/20 bg-accent p-4">
+                <p className="text-sm font-semibold">Selling these in sizes?</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Add S–XL to every item now, then enter only the stock that differs.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <Button type="button" size="sm" onClick={addSizesToAll}>
+                    Add sizes to all
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setChoiceNudgeDismissed(true)}
+                  >
+                    Not needed
+                  </Button>
+                </div>
+              </div>
+            )}
+
+          {!choiceNudgeDismissed &&
+            theme?.vertical === 'fnb' &&
+            products.every((product) => !product.customizations.length) && (
+              <div className="animate-rise rounded-2xl border border-flame/20 bg-accent p-4">
+                <p className="text-sm font-semibold">Any choice for every order?</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  Add a shared-stock preference in one tap, or keep these items as they are.
+                </p>
+                <div className="mt-3 flex gap-2">
+                  <Button type="button" size="sm" onClick={addChilliChoiceToAll}>
+                    Add chilli preference
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setChoiceNudgeDismissed(true)}
+                  >
+                    No shared choice
+                  </Button>
+                </div>
+              </div>
+            )}
+
           {products.map((product) => (
             <DraftItemCard
               key={product.id}
@@ -815,6 +957,12 @@ export function DropBuilder() {
               many you have of each item.
             </p>
           )}
+          {needsInput.includes('price') &&
+            products.some((product) => !product.price) && (
+              <p className="mt-3 text-xs font-medium text-destructive">
+                Add the missing prices before publishing.
+              </p>
+            )}
         </section>
 
         {theme && paletteCandidates.length > 0 && (

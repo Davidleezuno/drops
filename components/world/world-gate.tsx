@@ -81,7 +81,7 @@ export function WorldGate({
           onClick={() => setListMode(false)}
         >
           <DoorOpen className="size-4" />
-          Enter the store
+          Back to store
         </button>
       )}
       {config && showWorld && (

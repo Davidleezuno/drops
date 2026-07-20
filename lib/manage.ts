@@ -11,6 +11,8 @@ import type {
 type OrderRow = {
   id: string
   product_id: string
+  product_variant_id: string
+  selected_customizations: Record<string, string>
   qty: number
   buyer_name: string
   buyer_contact: string
@@ -51,7 +53,7 @@ export async function getManageSnapshot(
 
   const { data: products, error: productsError } = await supabase
     .from('products')
-    .select('*')
+    .select('*, variants:product_variants(*)')
     .eq('drop_id', drop.id)
     .order('price', { ascending: false })
     .returns<Product[]>()
@@ -70,7 +72,7 @@ export async function getManageSnapshot(
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select(
-        'id, product_id, qty, buyer_name, buyer_contact, fulfilment, address, amount, status, paid_at, created_at',
+        'id, product_id, product_variant_id, selected_customizations, qty, buyer_name, buyer_contact, fulfilment, address, amount, status, paid_at, created_at',
       )
       .in('product_id', productIds)
       .order('created_at', { ascending: false })
@@ -88,6 +90,11 @@ export async function getManageSnapshot(
   const productsById = new Map(
     productRows.map((product) => [product.id, product]),
   )
+  const variantsById = new Map(
+    productRows.flatMap((product) =>
+      product.variants.map((variant) => [variant.id, variant] as const),
+    ),
+  )
   const orders: ManageOrder[] = orderRows
     .map((order) => {
       const product = productsById.get(order.product_id)
@@ -97,6 +104,9 @@ export async function getManageSnapshot(
         ...order,
         product_name: product.name,
         product_variant: product.variant,
+        inventory_variant:
+          variantsById.get(order.product_variant_id)?.label ?? null,
+        selected_customizations: order.selected_customizations ?? {},
       }
     })
     .filter((order): order is ManageOrder => order !== null)

@@ -36,7 +36,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { allSoldOut, stockRemaining } from '@/lib/drop-state'
+import {
+  allSoldOut,
+  stockRemaining,
+  variantStockRemaining,
+} from '@/lib/drop-state'
 import { siteHost } from '@/lib/format'
 import { createClient } from '@/lib/supabase/client'
 import type { ManageOrder, ManageSnapshot, Product } from '@/lib/types'
@@ -79,8 +83,13 @@ function ConsoleCountdown({ endsAt }: { endsAt: string }) {
 }
 
 function productLabel(order: ManageOrder) {
-  return order.product_variant
-    ? `${order.product_name} — ${order.product_variant}`
+  const details = [
+    order.product_variant,
+    order.inventory_variant,
+    ...Object.values(order.selected_customizations),
+  ].filter(Boolean)
+  return details.length
+    ? `${order.product_name} — ${details.join(' · ')}`
     : order.product_name
 }
 
@@ -130,12 +139,18 @@ function buildPackingList(orders: ManageOrder[]) {
   const packed = new Map<string, PackingItem>()
 
   for (const order of orders) {
-    const current = packed.get(order.product_id)
+    const packingKey = [
+      order.product_variant_id,
+      ...Object.entries(order.selected_customizations)
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([name, value]) => `${name}:${value}`),
+    ].join('|')
+    const current = packed.get(packingKey)
     if (current) {
       current.quantity += order.qty
     } else {
-      packed.set(order.product_id, {
-        productId: order.product_id,
+      packed.set(packingKey, {
+        productId: packingKey,
         label: productLabel(order),
         quantity: order.qty,
       })
@@ -491,6 +506,26 @@ export function ManageConsole({
                       <p className="mt-0.5 truncate text-sm text-muted-foreground">
                         {product.variant}
                       </p>
+                    )}
+                    {product.variants.length > 1 && (
+                      <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+                        {[...product.variants]
+                          .sort((a, b) => a.position - b.position)
+                          .map((variant) => {
+                            const variantRemaining = variantStockRemaining(variant)
+                            return (
+                              <span
+                                key={variant.id}
+                                className="font-mono text-[11px] text-muted-foreground tabular-nums"
+                              >
+                                {variant.label}: {variant.stock_sold} sold
+                                {variantRemaining === null
+                                  ? ''
+                                  : ` · ${Math.max(0, variantRemaining)} left`}
+                              </span>
+                            )
+                          })}
+                      </div>
                     )}
                   </div>
                   <div className="flex shrink-0 items-center gap-4">

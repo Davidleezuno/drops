@@ -109,6 +109,9 @@ function WorldCheckout({
           productName={product.name}
           unitPrice={product.price}
           remaining={stockRemaining(product)}
+          inventoryChoiceName={product.inventory_choice_name}
+          variants={product.variants}
+          customizationGroups={product.customization_groups}
           fulfilment={drop.fulfilment}
           deliveryFee={drop.delivery_fee}
           pickupNote={drop.pickup_note}
@@ -236,7 +239,7 @@ export function WorldCanvas({
           onClick={onExit}
         >
           <List className="size-4" />
-          View as list
+          Browse All
         </button>
       </div>
 

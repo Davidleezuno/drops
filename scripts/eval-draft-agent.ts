@@ -49,7 +49,7 @@ function sameAccent(
   return first.l === second.l && first.c === second.c && first.h === second.h
 }
 
-function normalizedProduct(product: { name: string; price: number }) {
+function normalizedProduct(product: { name: string; price: number | null }) {
   return `${product.name.trim().toLocaleLowerCase('en')}|${product.price}`
 }
 

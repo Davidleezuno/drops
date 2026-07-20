@@ -71,12 +71,14 @@ function errorMessage(payload) {
   return null
 }
 
-async function createCheckout({ appUrl, productId, buyerNumber }) {
+async function createCheckout({ appUrl, productId, variantId, buyerNumber }) {
   const response = await fetch(new URL('/api/buy', appUrl), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       productId,
+      variantId,
+      customizations: {},
       quantity: 1,
       buyerName: `Race buyer ${buyerNumber}`,
       buyerContact: `race-${buyerNumber}@example.com`,
@@ -217,11 +219,27 @@ try {
   }
   fixture.productId = product.id
 
+  const { data: variant, error: variantError } = await supabase
+    .from('product_variants')
+    .insert({
+      product_id: product.id,
+      label: null,
+      price: 0.3,
+      stock_total: options.stock,
+    })
+    .select('id')
+    .single()
+
+  if (variantError) {
+    throw new Error(`Could not create race variant: ${variantError.message}`)
+  }
+
   const checkoutResults = await Promise.allSettled(
     Array.from({ length: options.buyers }, (_, index) =>
       createCheckout({
         appUrl,
         productId: product.id,
+        variantId: variant.id,
         buyerNumber: index + 1,
       }),
     ),

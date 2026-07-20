@@ -36,10 +36,10 @@ export async function POST(request: Request) {
         schema: extractedMenuSchema,
         name: 'menu_products',
         description:
-          'Unique products, optional variants, SGD prices, and the zero-based index of the source image where each product is visible.',
+          'Unique products, visible inventory choices, shared-stock customizations, commerce facts when shown, and the source image index.',
       }),
       system:
-        'You extract seller menus into structured commerce data. Treat every supplied image as part of one combined menu. Read only what is visible. Extract each unique purchasable listing once, remove obvious duplicates repeated across images, keep product names concise, preserve meaningful variants, return prices as SGD numbers without currency symbols, and use null when there is no variant. For sourceImageIndex, return the zero-based position of an image where that product is clearly visible; when it appears more than once, choose the clearest image. Do not invent products or prices.',
+        'You turn seller photos and menus into editable commerce drafts. Treat every supplied image as part of one set. Create one product per distinct item, remove obvious duplicates, and keep names concise. Return null for prices and stock that are not visibly stated. Group visibly stated separately stocked choices such as sizes under inventoryChoice. Put preparation preferences such as chilli/no chilli under customizations because they share product stock. Never invent option values, products, prices, or stock. For sourceImageIndex choose the clearest image where the product appears.',
       messages: [
         {
           role: 'user',
@@ -48,8 +48,8 @@ export async function POST(request: Request) {
               type: 'text',
               text:
                 images.length === 1
-                  ? 'This image is a seller menu. Extract every unique purchasable product, its variant when present, and its listed price.'
-                  : `These ${images.length} images are parts of one seller menu. Extract every unique purchasable product, its variant when present, and its listed price across all of them.`,
+                  ? 'Create the most useful editable listing draft from this seller image.'
+                  : `Create the most useful editable listing draft from these ${images.length} seller images.`,
             },
             ...imageParts,
           ],

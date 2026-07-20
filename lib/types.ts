@@ -1,4 +1,7 @@
-import type { StorefrontTheme } from '@/lib/drop-builder'
+import type {
+  CustomizationGroup,
+  StorefrontTheme,
+} from '@/lib/drop-builder'
 
 export type { StorefrontTheme } from '@/lib/drop-builder'
 
@@ -19,6 +22,16 @@ export type Drop = {
 
 export type OrderStatus = 'PENDING' | 'PAID' | 'PAID_LATE'
 
+export type ProductVariant = {
+  id: string
+  product_id: string
+  label: string | null
+  price: number
+  stock_total: number | null
+  stock_sold: number
+  position: number
+}
+
 export type Product = {
   id: string
   drop_id: string
@@ -28,6 +41,9 @@ export type Product = {
   price: number
   stock_total: number | null
   stock_sold: number
+  inventory_choice_name: string | null
+  customization_groups: CustomizationGroup[]
+  variants: ProductVariant[]
 }
 
 export type ManageDrop = Pick<
@@ -46,8 +62,11 @@ export type ManageDrop = Pick<
 export type ManageOrder = {
   id: string
   product_id: string
+  product_variant_id: string
   product_name: string
   product_variant: string | null
+  inventory_variant: string | null
+  selected_customizations: Record<string, string>
   qty: number
   buyer_name: string
   buyer_contact: string

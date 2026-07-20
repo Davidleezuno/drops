@@ -148,7 +148,7 @@ async function seedDrop(config) {
   )
   await supabase.from('products').delete().eq('drop_id', drop.id)
 
-  const { error: productsError } = await supabase
+  const { data: seededProducts, error: productsError } = await supabase
     .from('products')
     .insert(
       config.products.map((product, index) => ({
@@ -157,9 +157,26 @@ async function seedDrop(config) {
         image_url: imageUrls[index % imageUrls.length],
       })),
     )
+    .select('id, price, stock_total')
 
   if (productsError) {
     console.error(`Failed to seed products for ${config.sellerSlug}:`, productsError.message)
+    process.exit(1)
+  }
+
+  const { error: variantsError } = await supabase
+    .from('product_variants')
+    .insert(
+      seededProducts.map((product) => ({
+        product_id: product.id,
+        label: null,
+        price: product.price,
+        stock_total: product.stock_total,
+      })),
+    )
+
+  if (variantsError) {
+    console.error(`Failed to seed variants for ${config.sellerSlug}:`, variantsError.message)
     process.exit(1)
   }
 

@@ -44,7 +44,7 @@ export default async function DropPage({
 
   const { data: products } = await supabase
     .from('products')
-    .select('*')
+    .select('*, variants:product_variants(*)')
     .eq('drop_id', drop.id)
     .order('price', { ascending: false })
     .returns<Product[]>()

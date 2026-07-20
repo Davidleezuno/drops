@@ -20,6 +20,14 @@ type CreatedDrop = {
   manage_token: string
 }
 
+type ProductVariantInsert = {
+  product_id: string
+  label: string | null
+  price: number
+  stock_total: number | null
+  position: number
+}
+
 function isOwnedProductShotUrl(value: string | null) {
   if (!value) return true
 
@@ -128,18 +136,36 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const { error: productsError } = await supabase.from('products').insert(
-    input.products.map((product) => ({
+  const productRows = input.products.map((product) => {
+    const inventory = product.inventoryChoice?.variants
+    const stockTotal = inventory
+      ? inventory.some((variant) => variant.stock === null)
+        ? null
+        : inventory.reduce((sum, variant) => sum + (variant.stock ?? 0), 0)
+      : product.stock
+    const price = inventory
+      ? Math.min(...inventory.map((variant) => variant.price))
+      : product.price
+
+    return {
       drop_id: createdDrop.id,
       name: product.name,
       variant: product.variant || null,
       image_url: product.imageUrl,
-      price: product.price,
-      stock_total: product.stock,
-    })),
-  )
+      price,
+      stock_total: stockTotal,
+      inventory_choice_name: product.inventoryChoice?.name ?? null,
+      customization_groups: product.customizations,
+    }
+  })
 
-  if (productsError) {
+  const { data: createdProducts, error: productsError } = await supabase
+    .from('products')
+    .insert(productRows)
+    .select('id')
+    .returns<Array<{ id: string }>>()
+
+  if (productsError || createdProducts?.length !== input.products.length) {
     console.error('Failed to create drop products', productsError)
     const { error: cleanupError } = await supabase
       .from('drops')
@@ -147,6 +173,42 @@ export async function POST(request: NextRequest) {
       .eq('id', createdDrop.id)
     if (cleanupError) console.error('Failed to clean up empty drop', cleanupError)
 
+    return NextResponse.json(
+      { error: 'The drop could not be published. Please try again.' },
+      { status: 500 },
+    )
+  }
+
+  const persistedProducts = createdProducts ?? []
+  const variantRows = input.products.flatMap<ProductVariantInsert>((product, productIndex) => {
+    const productId = persistedProducts[productIndex].id
+    return product.inventoryChoice
+      ? product.inventoryChoice.variants.map((variant, position) => ({
+          product_id: productId,
+          label: variant.label,
+          price: variant.price,
+          stock_total: variant.stock,
+          position,
+        }))
+      : [
+          {
+            product_id: productId,
+            label: null,
+            price: product.price,
+            stock_total: product.stock,
+            position: 0,
+          },
+        ]
+  })
+
+  const { error: variantsError } = await supabase
+    .from('product_variants')
+    .insert(variantRows)
+
+  if (variantsError) {
+    console.error('Failed to create product variants', variantsError)
+    await supabase.from('products').delete().eq('drop_id', createdDrop.id)
+    await supabase.from('drops').delete().eq('id', createdDrop.id)
     return NextResponse.json(
       { error: 'The drop could not be published. Please try again.' },
       { status: 500 },

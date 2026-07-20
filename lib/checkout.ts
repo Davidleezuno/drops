@@ -1,5 +1,7 @@
 export type BuyRequest = {
   productId: string
+  variantId: string
+  customizations: Record<string, string>
   quantity: number
   buyerName: string
   buyerContact: string
@@ -40,6 +42,30 @@ export function parseBuyRequest(input: unknown): BuyRequestResult {
   if (typeof body.productId !== 'string' || !UUID_PATTERN.test(body.productId)) {
     return { ok: false, error: 'Invalid product' }
   }
+  if (typeof body.variantId !== 'string' || !UUID_PATTERN.test(body.variantId)) {
+    return { ok: false, error: 'Choose an available option' }
+  }
+
+  if (
+    !body.customizations ||
+    typeof body.customizations !== 'object' ||
+    Array.isArray(body.customizations)
+  ) {
+    return { ok: false, error: 'Invalid buyer choices' }
+  }
+  const customizations: Record<string, string> = {}
+  for (const [name, value] of Object.entries(body.customizations)) {
+    if (
+      name.trim().length === 0 ||
+      name.length > 40 ||
+      typeof value !== 'string' ||
+      value.trim().length === 0 ||
+      value.length > 60
+    ) {
+      return { ok: false, error: 'Invalid buyer choices' }
+    }
+    customizations[name.trim()] = value.trim()
+  }
 
   if (!Number.isSafeInteger(body.quantity) || Number(body.quantity) <= 0) {
     return { ok: false, error: 'Quantity must be a positive whole number' }
@@ -66,6 +92,8 @@ export function parseBuyRequest(input: unknown): BuyRequestResult {
     ok: true,
     value: {
       productId: body.productId,
+      variantId: body.variantId,
+      customizations,
       quantity: Number(body.quantity),
       buyerName,
       buyerContact,

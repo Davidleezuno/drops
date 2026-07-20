@@ -1,12 +1,34 @@
 'use client'
 
 import Image from 'next/image'
-import { ImagePlus, LoaderCircle, Sparkles, Trash2 } from 'lucide-react'
+import {
+  ChevronDown,
+  ImagePlus,
+  LoaderCircle,
+  Plus,
+  Sparkles,
+  Trash2,
+  X,
+} from 'lucide-react'
+import { useState } from 'react'
 
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+
+export type ProductVariantDraft = {
+  id: string
+  label: string
+  price: string
+  stock: string
+}
+
+export type CustomizationDraft = {
+  id: string
+  name: string
+  values: string[]
+}
 
 export type ProductDraft = {
   id: string
@@ -16,6 +38,9 @@ export type ProductDraft = {
   stock: string
   imageUrl: string | null
   imageSource: 'source' | 'uploaded' | 'generated' | null
+  inventoryChoiceName: string
+  variants: ProductVariantDraft[]
+  customizations: CustomizationDraft[]
 }
 
 /**
@@ -42,8 +67,73 @@ export function DraftItemCard({
   onUpload: (product: ProductDraft, file: File) => void
   onImprove: (product: ProductDraft) => void
 }) {
+  const [choicesOpen, setChoicesOpen] = useState(
+    product.variants.length > 0 || product.customizations.length > 0,
+  )
   const fieldId = (field: string) => `${field}-${product.id}`
   const itemLabel = product.name.trim() || 'this item'
+  const choiceSummary = [
+    product.variants.length
+      ? product.inventoryChoiceName.trim().toLowerCase() === 'size'
+        ? `${product.variants.length} sizes`
+        : `${product.variants.length} stock options`
+      : null,
+    ...product.customizations.map((group) => group.name.trim()).filter(Boolean),
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  function addSizePreset() {
+    const price = product.price
+    onChange({
+      ...product,
+      inventoryChoiceName: 'Size',
+      variants: ['S', 'M', 'L', 'XL'].map((label) => ({
+        id: crypto.randomUUID(),
+        label,
+        price,
+        stock: '',
+      })),
+    })
+    setChoicesOpen(true)
+  }
+
+  function addVariant() {
+    onChange({
+      ...product,
+      inventoryChoiceName: product.inventoryChoiceName || 'Option',
+      variants: [
+        ...product.variants,
+        {
+          id: crypto.randomUUID(),
+          label: '',
+          price: product.price,
+          stock: '',
+        },
+      ],
+    })
+  }
+
+  function addCustomization(preset?: 'chilli') {
+    onChange({
+      ...product,
+      customizations: [
+        ...product.customizations,
+        preset === 'chilli'
+          ? {
+              id: crypto.randomUUID(),
+              name: 'Chilli preference',
+              values: ['Chilli', 'No chilli'],
+            }
+          : {
+              id: crypto.randomUUID(),
+              name: '',
+              values: ['', ''],
+            },
+      ],
+    })
+    setChoicesOpen(true)
+  }
 
   return (
     <article className="animate-rise overflow-hidden rounded-2xl border border-border bg-card">
@@ -160,20 +250,20 @@ export function DraftItemCard({
 
         <div className="space-y-1.5">
           <Label htmlFor={fieldId('variant')}>
-            Detail <span className="text-muted-foreground">(optional)</span>
+            Short detail <span className="text-muted-foreground">(optional)</span>
           </Label>
           <Input
             id={fieldId('variant')}
             value={product.variant}
             maxLength={120}
-            placeholder="e.g. 6 pieces"
+            placeholder="e.g. Heavyweight cotton"
             onChange={(event) =>
               onChange({ ...product, variant: event.target.value })
             }
           />
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className={product.variants.length ? '' : 'grid grid-cols-2 gap-3'}>
           <div className="space-y-1.5">
             <Label htmlFor={fieldId('price')}>Price (S$)</Label>
             <Input
@@ -186,12 +276,21 @@ export function DraftItemCard({
               step="0.01"
               value={product.price}
               required
-              onChange={(event) =>
-                onChange({ ...product, price: event.target.value })
-              }
+              onChange={(event) => {
+                const nextPrice = event.target.value
+                onChange({
+                  ...product,
+                  price: nextPrice,
+                  variants: product.variants.map((variant) =>
+                    variant.price === product.price
+                      ? { ...variant, price: nextPrice }
+                      : variant,
+                  ),
+                })
+              }}
             />
           </div>
-          <div className="space-y-1.5">
+          {!product.variants.length && <div className="space-y-1.5">
             <Label htmlFor={fieldId('stock')}>How many</Label>
             <Input
               id={fieldId('stock')}
@@ -207,7 +306,249 @@ export function DraftItemCard({
                 onChange({ ...product, stock: event.target.value })
               }
             />
-          </div>
+          </div>}
+        </div>
+
+        <div className="overflow-hidden rounded-xl border border-border">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 px-3 py-3 text-left"
+            aria-expanded={choicesOpen}
+            onClick={() => setChoicesOpen((current) => !current)}
+          >
+            <span>
+              <span className="block text-sm font-medium">Buyer choices</span>
+              <span className="mt-0.5 block text-xs text-muted-foreground">
+                {choiceSummary || 'Sizes, flavours or preferences'}
+              </span>
+            </span>
+            <ChevronDown
+              className={cn(
+                'size-4 shrink-0 text-muted-foreground transition-transform',
+                choicesOpen && 'rotate-180',
+              )}
+            />
+          </button>
+
+          {choicesOpen && (
+            <div className="space-y-5 border-t border-border bg-muted/30 p-3">
+              <section>
+                <div>
+                  <p className="text-sm font-medium">Choices with their own stock</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                    Use this for sizes or any option that can sell out separately.
+                  </p>
+                </div>
+
+                {!product.variants.length ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={addSizePreset}>
+                      Add sizes S–XL
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={addVariant}>
+                      <Plus /> Custom
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="mt-3 space-y-2.5">
+                    <div className="space-y-1.5">
+                      <Label htmlFor={fieldId('inventory-choice')}>Choice name</Label>
+                      <Input
+                        id={fieldId('inventory-choice')}
+                        value={product.inventoryChoiceName}
+                        maxLength={40}
+                        placeholder="e.g. Size"
+                        onChange={(event) =>
+                          onChange({
+                            ...product,
+                            inventoryChoiceName: event.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="grid grid-cols-[1fr_0.9fr_0.8fr_2rem] gap-1.5 px-0.5 font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+                      <span>Value</span><span>Price</span><span>Stock</span><span />
+                    </div>
+                    {product.variants.map((variant) => (
+                      <div key={variant.id} className="grid grid-cols-[1fr_0.9fr_0.8fr_2rem] gap-1.5">
+                        <Input
+                          aria-label={`${product.inventoryChoiceName || 'Option'} value`}
+                          value={variant.label}
+                          maxLength={60}
+                          placeholder="M"
+                          onChange={(event) =>
+                            onChange({
+                              ...product,
+                              variants: product.variants.map((candidate) =>
+                                candidate.id === variant.id
+                                  ? { ...candidate, label: event.target.value }
+                                  : candidate,
+                              ),
+                            })
+                          }
+                        />
+                        <Input
+                          aria-label={`${variant.label || 'Option'} price`}
+                          type="number"
+                          inputMode="decimal"
+                          min="0.01"
+                          step="0.01"
+                          value={variant.price}
+                          placeholder={product.price || '0'}
+                          onChange={(event) =>
+                            onChange({
+                              ...product,
+                              variants: product.variants.map((candidate) =>
+                                candidate.id === variant.id
+                                  ? { ...candidate, price: event.target.value }
+                                  : candidate,
+                              ),
+                            })
+                          }
+                        />
+                        <Input
+                          aria-label={`${variant.label || 'Option'} stock`}
+                          type="number"
+                          inputMode="numeric"
+                          min="0"
+                          step="1"
+                          value={variant.stock}
+                          placeholder="∞"
+                          onChange={(event) =>
+                            onChange({
+                              ...product,
+                              variants: product.variants.map((candidate) =>
+                                candidate.id === variant.id
+                                  ? { ...candidate, stock: event.target.value }
+                                  : candidate,
+                              ),
+                            })
+                          }
+                        />
+                        <Button
+                          type="button"
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label={`Remove ${variant.label || 'option'}`}
+                          disabled={product.variants.length <= 2}
+                          onClick={() =>
+                            onChange({
+                              ...product,
+                              variants: product.variants.filter(
+                                (candidate) => candidate.id !== variant.id,
+                              ),
+                            })
+                          }
+                        >
+                          <X />
+                        </Button>
+                      </div>
+                    ))}
+                    <div className="flex items-center justify-between gap-2">
+                      <Button type="button" size="sm" variant="ghost" onClick={addVariant}>
+                        <Plus /> Add value
+                      </Button>
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() =>
+                          onChange({
+                            ...product,
+                            inventoryChoiceName: '',
+                            variants: [],
+                          })
+                        }
+                      >
+                        Remove stock choices
+                      </button>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">
+                      Leave stock blank to sell without a limit. Use 0 to show an unavailable option.
+                    </p>
+                  </div>
+                )}
+              </section>
+
+              <section className="border-t border-border pt-4">
+                <p className="text-sm font-medium">Choices that share stock</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
+                  Preferences are saved with the order but use this item&rsquo;s total stock.
+                </p>
+
+                {product.customizations.map((group) => (
+                  <div key={group.id} className="mt-3 rounded-lg border border-border bg-background p-2.5">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        aria-label="Buyer choice name"
+                        value={group.name}
+                        maxLength={40}
+                        placeholder="e.g. Chilli preference"
+                        onChange={(event) =>
+                          onChange({
+                            ...product,
+                            customizations: product.customizations.map((candidate) =>
+                              candidate.id === group.id
+                                ? { ...candidate, name: event.target.value }
+                                : candidate,
+                            ),
+                          })
+                        }
+                      />
+                      <Button
+                        type="button"
+                        size="icon-sm"
+                        variant="ghost"
+                        aria-label="Remove buyer choice"
+                        onClick={() =>
+                          onChange({
+                            ...product,
+                            customizations: product.customizations.filter(
+                              (candidate) => candidate.id !== group.id,
+                            ),
+                          })
+                        }
+                      >
+                        <X />
+                      </Button>
+                    </div>
+                    <Input
+                      className="mt-2"
+                      aria-label="Buyer choice values"
+                      value={group.values.join(', ')}
+                      maxLength={240}
+                      placeholder="e.g. Chilli, No chilli"
+                      onChange={(event) =>
+                        onChange({
+                          ...product,
+                          customizations: product.customizations.map((candidate) =>
+                            candidate.id === group.id
+                              ? {
+                                  ...candidate,
+                                  values: event.target.value
+                                    .split(',')
+                                    .map((value) => value.trimStart()),
+                                }
+                              : candidate,
+                          ),
+                        })
+                      }
+                    />
+                    <p className="mt-1.5 text-[11px] text-muted-foreground">
+                      Separate options with commas.
+                    </p>
+                  </div>
+                ))}
+
+                {product.customizations.length < 2 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button type="button" size="sm" variant="outline" onClick={() => addCustomization()}>
+                      <Plus /> Custom choice
+                    </Button>
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
         </div>
       </div>
     </article>

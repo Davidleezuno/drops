@@ -1,7 +1,8 @@
 'use client'
 
-import { LoaderCircle, LockKeyhole } from 'lucide-react'
-import { FormEvent, useMemo, useState } from 'react'
+import { LoaderCircle, LockKeyhole, X } from 'lucide-react'
+import { FormEvent, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 
 import { Price } from '@/components/ds/price'
 import { Button } from '@/components/ui/button'
@@ -15,7 +16,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { sgd } from '@/lib/format'
+import {
+  isVariantSoldOut,
+  variantStockRemaining,
+} from '@/lib/drop-state'
 import { orderTotalCents } from '@/lib/money'
+import type { CustomizationGroup } from '@/lib/drop-builder'
+import type { ProductVariant } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 type Fulfilment = 'pickup' | 'delivery'
 
@@ -24,6 +32,9 @@ export function BuyFlow({
   productName,
   unitPrice,
   remaining,
+  inventoryChoiceName,
+  variants,
+  customizationGroups,
   fulfilment,
   deliveryFee,
   pickupNote,
@@ -35,6 +46,9 @@ export function BuyFlow({
   unitPrice: number
   /** Units left, or null when the product is uncapped (future-ideas §3). */
   remaining: number | null
+  inventoryChoiceName: string | null
+  variants: ProductVariant[]
+  customizationGroups: CustomizationGroup[]
   fulfilment: Fulfilment | 'both'
   deliveryFee: number
   pickupNote: string | null
@@ -42,23 +56,69 @@ export function BuyFlow({
   onClose?: () => void
 }) {
   const [open, setOpen] = useState(initialOpen)
+  const [mobileCheckout, setMobileCheckout] = useState(false)
+  const sortedVariants = [...variants].sort((a, b) => a.position - b.position)
+  const [selectedVariantId, setSelectedVariantId] = useState(
+    sortedVariants.length === 1 ? sortedVariants[0].id : '',
+  )
+  const [selectedCustomizations, setSelectedCustomizations] = useState<
+    Record<string, string>
+  >({})
   const [quantity, setQuantity] = useState(1)
   const [selectedFulfilment, setSelectedFulfilment] = useState<Fulfilment>(
     fulfilment === 'delivery' ? 'delivery' : 'pickup',
   )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
-  const totalCents = useMemo(
-    () =>
-      orderTotalCents({
-        unitPrice,
-        quantity: Math.max(1, quantity || 1),
-        deliveryFee,
-        fulfilment: selectedFulfilment,
-      }),
-    [deliveryFee, quantity, selectedFulfilment, unitPrice],
+  const selectedVariant = sortedVariants.find(
+    (variant) => variant.id === selectedVariantId,
   )
+  const effectiveRemaining = selectedVariant
+    ? variantStockRemaining(selectedVariant)
+    : remaining
+  const effectivePrice = selectedVariant?.price ?? unitPrice
+  const choicesComplete = customizationGroups.every(
+    (group) => selectedCustomizations[group.name],
+  )
+
+  const totalCents = orderTotalCents({
+    unitPrice: effectivePrice,
+    quantity: Math.max(1, quantity || 1),
+    deliveryFee,
+    fulfilment: selectedFulfilment,
+  })
+
+  function closeCheckout() {
+    setOpen(false)
+    setMobileCheckout(false)
+    setError(null)
+    onClose?.()
+  }
+
+  useEffect(() => {
+    if (!open) return
+
+    const mobile = window.matchMedia('(max-width: 639px)')
+    if (!mobile.matches) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !submitting) {
+        setOpen(false)
+        setMobileCheckout(false)
+        setError(null)
+        onClose?.()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onClose, open, submitting])
 
   if (remaining !== null && remaining <= 0) {
     return (
@@ -80,6 +140,8 @@ export function BuyFlow({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId,
+          variantId: selectedVariantId,
+          customizations: selectedCustomizations,
           quantity,
           buyerName: form.get('buyerName'),
           buyerContact: form.get('buyerContact'),
@@ -116,15 +178,115 @@ export function BuyFlow({
         size="lg"
         className="mt-4 h-12 w-full"
         aria-label={`Buy ${productName}`}
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setMobileCheckout(window.matchMedia('(max-width: 639px)').matches)
+          setOpen(true)
+        }}
       >
-        Buy
+        {sortedVariants.length > 1 || customizationGroups.length
+          ? 'Select options'
+          : 'Buy'}
       </Button>
     )
   }
 
-  return (
-    <form className="mt-4 border-t border-border pt-4" onSubmit={handleSubmit}>
+  const checkoutForm = (
+    <form
+      className="fixed inset-0 z-[100] overflow-y-auto bg-background px-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:static sm:z-auto sm:mt-4 sm:overflow-visible sm:border-t sm:border-border sm:bg-transparent sm:px-0 sm:pb-0 sm:pt-4"
+      onSubmit={handleSubmit}
+      aria-label={`Checkout for ${productName}`}
+      aria-modal={mobileCheckout || undefined}
+      role={mobileCheckout ? 'dialog' : undefined}
+    >
+      <div className="sticky top-0 z-10 -mx-5 mb-5 flex items-center justify-between border-b border-border bg-background/95 px-5 py-4 backdrop-blur sm:hidden">
+        <div className="min-w-0 pr-4">
+          <p className="font-display text-xl font-semibold">Checkout</p>
+          <p className="truncate text-sm text-muted-foreground">
+            {productName} · {sgd.format(effectivePrice)}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full border border-border bg-card transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Close checkout"
+          onClick={closeCheckout}
+          disabled={submitting}
+        >
+          <X className="size-5" />
+        </button>
+      </div>
+      {sortedVariants.length > 1 && (
+        <fieldset className="mb-4">
+          <legend className="text-sm font-medium">
+            Choose {inventoryChoiceName?.toLowerCase() || 'an option'}
+          </legend>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {sortedVariants.map((variant) => {
+              const soldOut = isVariantSoldOut(variant)
+              const selected = variant.id === selectedVariantId
+              return (
+                <button
+                  key={variant.id}
+                  type="button"
+                  disabled={soldOut}
+                  aria-pressed={selected}
+                  onClick={() => {
+                    setSelectedVariantId(variant.id)
+                    setQuantity(1)
+                  }}
+                  className={cn(
+                    'min-h-11 min-w-12 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                    selected
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background hover:border-foreground/40',
+                    soldOut && 'cursor-not-allowed opacity-40 line-through',
+                  )}
+                >
+                  {variant.label}
+                </button>
+              )
+            })}
+          </div>
+          {selectedVariant && selectedVariant.price !== unitPrice && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              {sgd.format(selectedVariant.price)} for this option
+            </p>
+          )}
+        </fieldset>
+      )}
+
+      {customizationGroups.map((group) => (
+        <fieldset key={group.name} className="mb-4">
+          <legend className="text-sm font-medium">{group.name}</legend>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {group.values.map((value) => {
+              const selected = selectedCustomizations[group.name] === value
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() =>
+                    setSelectedCustomizations((current) => ({
+                      ...current,
+                      [group.name]: value,
+                    }))
+                  }
+                  className={cn(
+                    'min-h-11 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
+                    selected
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background hover:border-foreground/40',
+                  )}
+                >
+                  {value}
+                </button>
+              )
+            })}
+          </div>
+        </fieldset>
+      ))}
+
       <div className={fulfilment === 'both' ? 'grid grid-cols-2 gap-3' : ''}>
         <div className="space-y-1.5">
           <Label htmlFor={`quantity-${productId}`}>How many</Label>
@@ -134,10 +296,11 @@ export function BuyFlow({
             type="number"
             inputMode="numeric"
             min={1}
-            max={remaining ?? undefined}
+            max={effectiveRemaining ?? undefined}
             value={quantity}
             onChange={(event) => setQuantity(Number(event.target.value))}
             required
+            className="h-11 sm:h-8"
           />
         </div>
 
@@ -175,6 +338,7 @@ export function BuyFlow({
           autoComplete="name"
           maxLength={120}
           required
+          className="h-11 sm:h-8"
         />
       </div>
 
@@ -185,6 +349,7 @@ export function BuyFlow({
           name="buyerContact"
           maxLength={200}
           required
+          className="h-11 sm:h-8"
         />
       </div>
 
@@ -197,6 +362,7 @@ export function BuyFlow({
             autoComplete="street-address"
             maxLength={500}
             required
+            className="h-11 sm:h-8"
           />
         </div>
       ) : (
@@ -212,6 +378,7 @@ export function BuyFlow({
           <p className="text-sm font-semibold">Total</p>
           <p className="truncate text-xs text-muted-foreground">
             {quantity || 1} × {productName}
+            {selectedVariant?.label ? ` · ${selectedVariant.label}` : ''}
             {selectedFulfilment === 'delivery'
               ? ` + ${sgd.format(deliveryFee)} delivery`
               : ''}
@@ -232,6 +399,9 @@ export function BuyFlow({
         className="mt-4 h-12 w-full"
         disabled={
           submitting || quantity < 1 || (remaining !== null && quantity > remaining)
+          || !selectedVariantId
+          || !choicesComplete
+          || (effectiveRemaining !== null && quantity > effectiveRemaining)
         }
       >
         {submitting ? (
@@ -253,15 +423,13 @@ export function BuyFlow({
       <button
         type="button"
         className="mt-2 w-full py-1 text-xs text-muted-foreground hover:text-foreground"
-        onClick={() => {
-          setOpen(false)
-          setError(null)
-          onClose?.()
-        }}
+        onClick={closeCheckout}
         disabled={submitting}
       >
         Cancel
       </button>
     </form>
   )
+
+  return mobileCheckout ? createPortal(checkoutForm, document.body) : checkoutForm
 }

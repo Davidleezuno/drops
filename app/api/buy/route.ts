@@ -2,7 +2,7 @@ import { after, NextResponse } from 'next/server'
 
 import { fulfilmentIsAvailable, parseBuyRequest } from '@/lib/checkout'
 import { createServiceClient } from '@/lib/db'
-import { dropWindowClosed, stockRemaining } from '@/lib/drop-state'
+import { dropWindowClosed, variantStockRemaining } from '@/lib/drop-state'
 import { broadcastClaim } from '@/lib/social-server'
 import {
   createHitPayPaymentRequest,
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   const supabase = createServiceClient()
   const { data: product, error: productError } = await supabase
     .from('products')
-    .select('*, drop:drops(*)')
+    .select('*, variants:product_variants(*), drop:drops(*)')
     .eq('id', details.productId)
     .maybeSingle<ProductWithDrop>()
 
@@ -62,7 +62,36 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'This drop has ended' }, { status: 409 })
   }
 
-  const remaining = stockRemaining(product)
+  const selectedVariant = product.variants.find(
+    (variant) => variant.id === details.variantId,
+  )
+  if (!selectedVariant) {
+    return NextResponse.json(
+      { error: 'That option is no longer available' },
+      { status: 409 },
+    )
+  }
+
+  const customizationGroups = product.customization_groups ?? []
+  const validCustomizationNames = new Set(
+    customizationGroups.map((group) => group.name),
+  )
+  const choicesAreValid =
+    Object.keys(details.customizations).length === customizationGroups.length &&
+    Object.keys(details.customizations).every((name) =>
+      validCustomizationNames.has(name),
+    ) &&
+    customizationGroups.every((group) =>
+      group.values.includes(details.customizations[group.name]),
+    )
+  if (!choicesAreValid) {
+    return NextResponse.json(
+      { error: 'Choose an option for each buyer choice' },
+      { status: 400 },
+    )
+  }
+
+  const remaining = variantStockRemaining(selectedVariant)
   if (remaining !== null && remaining < details.quantity) {
     return NextResponse.json(
       { error: 'There is not enough stock left for that quantity' },
@@ -79,7 +108,7 @@ export async function POST(request: Request) {
 
   const amount = centsToSgd(
     orderTotalCents({
-      unitPrice: product.price,
+      unitPrice: selectedVariant.price,
       quantity: details.quantity,
       deliveryFee: product.drop.delivery_fee,
       fulfilment: details.fulfilment,
@@ -94,6 +123,8 @@ export async function POST(request: Request) {
     .from('orders')
     .insert({
       product_id: product.id,
+      product_variant_id: selectedVariant.id,
+      selected_customizations: details.customizations,
       qty: details.quantity,
       buyer_name: details.buyerName,
       buyer_contact: details.buyerContact,
@@ -118,7 +149,7 @@ export async function POST(request: Request) {
     paymentRequest = await createHitPayPaymentRequest({
       amount,
       referenceNumber: order.id,
-      purpose: `${product.drop.seller_name} — ${product.name} ×${details.quantity}${deliveryDescription}`,
+      purpose: `${product.drop.seller_name} — ${product.name}${selectedVariant.label ? ` / ${selectedVariant.label}` : ''} ×${details.quantity}${deliveryDescription}`,
       buyerName: details.buyerName,
       buyerContact: details.buyerContact,
       redirectUrl: `${appUrl}/order/${order.id}`,

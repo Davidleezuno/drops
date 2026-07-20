@@ -27,6 +27,10 @@ export function ProductRow({
 }) {
   const remaining = stockRemaining(product)
   const soldOut = isSoldOut(product)
+  const visibleVariants = [...product.variants]
+    .sort((a, b) => a.position - b.position)
+    .filter((variant) => variant.label)
+  const hasVariablePrice = new Set(product.variants.map((variant) => variant.price)).size > 1
 
   return (
     <article
@@ -57,9 +61,27 @@ export function ProductRow({
               {product.variant}
             </p>
           )}
+          {visibleVariants.length > 1 && (
+            <p className="mt-1 text-xs font-medium text-muted-foreground">
+              {product.inventory_choice_name || 'Options'}:{' '}
+              {visibleVariants.map((variant) => variant.label).join(' · ')}
+            </p>
+          )}
+          {product.customization_groups.length > 0 && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {product.customization_groups
+                .map((group) => group.name)
+                .join(' · ')}
+            </p>
+          )}
+          {hasVariablePrice && (
+            <span className="mt-1.5 block font-mono text-[10px] tracking-wider text-muted-foreground uppercase">
+              From
+            </span>
+          )}
           <Price
             amount={product.price}
-            className="mt-1.5 block text-lg font-semibold"
+            className={hasVariablePrice ? 'block text-lg font-semibold' : 'mt-1.5 block text-lg font-semibold'}
           />
         </div>
         <StockBadge
@@ -75,6 +97,9 @@ export function ProductRow({
         productName={product.name}
         unitPrice={product.price}
         remaining={remaining}
+        inventoryChoiceName={product.inventory_choice_name}
+        variants={product.variants}
+        customizationGroups={product.customization_groups}
         fulfilment={fulfilment}
         deliveryFee={deliveryFee}
         pickupNote={pickupNote}

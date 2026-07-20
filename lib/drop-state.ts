@@ -1,4 +1,4 @@
-import type { Drop, Product } from '@/lib/types'
+import type { Drop, Product, ProductVariant } from '@/lib/types'
 
 /**
  * Both scarcity axes are optional (future-ideas §3): a null stock_total is an
@@ -19,6 +19,21 @@ export function isSoldOut(
   product: Pick<Product, 'stock_total' | 'stock_sold'>,
 ): boolean {
   const remaining = stockRemaining(product)
+  return remaining !== null && remaining <= 0
+}
+
+export function variantStockRemaining(
+  variant: Pick<ProductVariant, 'stock_total' | 'stock_sold'>,
+): number | null {
+  return variant.stock_total === null
+    ? null
+    : variant.stock_total - variant.stock_sold
+}
+
+export function isVariantSoldOut(
+  variant: Pick<ProductVariant, 'stock_total' | 'stock_sold'>,
+): boolean {
+  const remaining = variantStockRemaining(variant)
   return remaining !== null && remaining <= 0
 }
 

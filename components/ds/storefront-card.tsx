@@ -25,15 +25,54 @@ type Accent = StorefrontTheme['accent']
 type Nudge = 'bolder' | 'calmer'
 
 function toPreviewProduct(product: ProductDraft, index: number): Product {
+  const variants = product.variants.length
+    ? product.variants.map((variant, position) => ({
+        id: variant.id,
+        product_id: product.id,
+        label: variant.label.trim() || `Option ${position + 1}`,
+        price: Number(variant.price || product.price) || 0,
+        stock_total:
+          variant.stock.trim() === '' ? null : Number(variant.stock),
+        stock_sold: 0,
+        position,
+      }))
+    : [
+        {
+          id: `${product.id}-default`,
+          product_id: product.id,
+          label: null,
+          price: Number(product.price) || 0,
+          stock_total:
+            product.stock.trim() === '' ? null : Number(product.stock),
+          stock_sold: 0,
+          position: 0,
+        },
+      ]
+  const cappedStocks = variants.map((variant) => variant.stock_total)
+  const stockTotal = cappedStocks.some((stock) => stock === null)
+    ? null
+    : cappedStocks.reduce<number>((sum, stock) => sum + (stock ?? 0), 0)
+
   return {
     id: product.id,
     drop_id: 'preview',
     name: product.name.trim() || `Item ${index + 1}`,
     variant: product.variant.trim() || null,
     image_url: product.imageUrl,
-    price: Number(product.price) || 0,
-    stock_total: product.stock.trim() === '' ? null : Number(product.stock),
+    price: Math.min(...variants.map((variant) => variant.price)),
+    stock_total: stockTotal,
     stock_sold: 0,
+    inventory_choice_name:
+      product.variants.length > 0
+        ? product.inventoryChoiceName.trim() || 'Option'
+        : null,
+    customization_groups: product.customizations
+      .map((group) => ({
+        name: group.name.trim(),
+        values: group.values.map((value) => value.trim()).filter(Boolean),
+      }))
+      .filter((group) => group.name && group.values.length >= 2),
+    variants,
   }
 }
 

@@ -2,13 +2,40 @@ import { z } from 'zod'
 
 export { slugify } from '@/lib/format'
 
+const choiceNameSchema = z.string().trim().min(1).max(40)
+const choiceValueSchema = z.string().trim().min(1).max(60)
+
+export const customizationGroupSchema = z.object({
+  name: choiceNameSchema,
+  values: z.array(choiceValueSchema).min(2).max(8),
+})
+
+export const inventoryChoiceDraftSchema = z.object({
+  name: choiceNameSchema,
+  values: z
+    .array(
+      z.object({
+        label: choiceValueSchema,
+        price: z.number().positive().max(100_000).nullable(),
+        stock: z.number().int().nonnegative().max(100_000).nullable(),
+      }),
+    )
+    .min(2)
+    .max(12),
+})
+
 export const extractedMenuSchema = z.object({
   products: z
     .array(
       z.object({
         name: z.string().min(1).max(120),
         variant: z.string().max(120).nullable(),
-        price: z.number().positive().max(100_000),
+        // Product shots often contain no price or stock. A useful draft keeps
+        // those facts blank instead of asking the model to invent them.
+        price: z.number().positive().max(100_000).nullable(),
+        stock: z.number().int().nonnegative().max(100_000).nullable(),
+        inventoryChoice: inventoryChoiceDraftSchema.nullable(),
+        customizations: z.array(customizationGroupSchema).max(2),
         sourceImageIndex: z.number().int().min(0).max(4),
       }),
     )
@@ -62,7 +89,7 @@ export const dropDraftSchema = z.object({
     .min(3)
     .max(5),
   needsInput: z.array(
-    z.enum(['stock', 'window', 'deliveryFee', 'pickup']),
+    z.enum(['price', 'stock', 'window', 'deliveryFee', 'pickup']),
   ),
 })
 
@@ -78,6 +105,28 @@ export const createDropSchema = z.object({
         // null = no cap (future-ideas §3): sell until the seller ends it.
         stock: z.number().int().positive().max(100_000).nullable(),
         imageUrl: z.url().max(2_000).nullable(),
+        inventoryChoice: z
+          .object({
+            name: choiceNameSchema,
+            variants: z
+              .array(
+                z.object({
+                  label: choiceValueSchema,
+                  price: z.number().positive().max(100_000),
+                  stock: z
+                    .number()
+                    .int()
+                    .nonnegative()
+                    .max(100_000)
+                    .nullable(),
+                }),
+              )
+              .min(2)
+              .max(12),
+          })
+          .nullable()
+          .default(null),
+        customizations: z.array(customizationGroupSchema).max(2).default([]),
       }),
     )
     .min(1)
@@ -92,6 +141,7 @@ export const createDropSchema = z.object({
 })
 
 export type ExtractedMenu = z.infer<typeof extractedMenuSchema>
+export type CustomizationGroup = z.infer<typeof customizationGroupSchema>
 export type StorefrontTheme = z.infer<typeof storefrontThemeSchema>
 export type DropDraft = z.infer<typeof dropDraftSchema>
 export type CreateDropInput = z.infer<typeof createDropSchema>
