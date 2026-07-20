@@ -291,13 +291,7 @@ function ReviewSection({
   )
 }
 
-function ReviewLoading({
-  imageCount,
-  onContinueManually,
-}: {
-  imageCount: number
-  onContinueManually: () => void
-}) {
+function ReviewLoading() {
   const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
   useEffect(() => {
@@ -313,10 +307,6 @@ function ReviewLoading({
         <h1 className="font-display text-4xl font-semibold tracking-tight">
           Building your listings…
         </h1>
-        <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Gemini is reading {imageCount} {imageCount === 1 ? 'photo' : 'photos'}
-          {' '}while we save them. This usually takes 10–25 seconds.
-        </p>
       </header>
 
       <div className="mt-8 flex items-center gap-3" aria-live="polite">
@@ -327,23 +317,6 @@ function ReviewLoading({
           Drafting listings · {elapsedSeconds}s
         </span>
       </div>
-
-      {elapsedSeconds >= 12 && (
-        <div className="mt-5 rounded-xl border border-border bg-card p-4">
-          <p className="text-sm text-muted-foreground">
-            Taking longer than expected? You can start entering items yourself.
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-3"
-            onClick={onContinueManually}
-          >
-            Continue manually
-          </Button>
-        </div>
-      )}
 
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {[0, 1, 2, 3].map((index) => (
@@ -813,8 +786,8 @@ export function DropBuilder() {
 
     setExtracting(true)
     setError(null)
-    // Take the seller to the destination right away so elapsed time and the
-    // manual-entry escape hatch remain visible while the model works.
+    // Take the seller to the destination right away so progress remains
+    // visible while the model works.
     setProducts([])
     setPhase('review')
     draftAbortRef.current?.abort()
@@ -1110,23 +1083,7 @@ export function DropBuilder() {
 
   if (phase === 'review') {
     if (extracting && !products.length) {
-      return (
-        <ReviewLoading
-          imageCount={selectedImages.length}
-          onContinueManually={() => {
-            draftAbortRef.current?.abort()
-            enhancementAbortRef.current?.abort()
-            prefetchedEnhancementsRef.current.clear()
-            acceptedEnhancementUrlsRef.current.clear()
-            setReadyEnhancementIndexes([])
-            setProducts([newProduct()])
-            setTheme(null)
-            setNeedsInput(['price', 'stock', 'window', 'deliveryFee', 'pickup'])
-            setError(null)
-            setExtracting(false)
-          }}
-        />
-      )
+      return <ReviewLoading />
     }
 
     const closesAt = new Date(windowEndsAt)
