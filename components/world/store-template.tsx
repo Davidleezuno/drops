@@ -1,285 +1,426 @@
 'use client'
 
-import { ContactShadows, Html, RoundedBox } from '@react-three/drei'
+import { ContactShadows, RoundedBox } from '@react-three/drei'
 import { useMemo } from 'react'
+import { Shape, ShapeGeometry } from 'three'
 
 import type { Product } from '@/lib/types'
 import type { Announcement } from '@/lib/use-drop-social'
 import type { SceneConfig } from '@/lib/world/scene-config'
 
-import {
-  Awning,
-  CounterClutter,
-  INK,
-  PendantLamp,
-  Plant,
-  RoundedRect,
-  StringLights,
-  WallArt,
-} from './decor'
+import { Awning, CounterClutter, INK, PendantLamp } from './decor'
 import { ProductFrame } from './product-frame'
+import {
+  BookStack,
+  BorderedRug,
+  BRASS,
+  GalleryPictureLight,
+  OAK_DARK,
+  PLASTER,
+  PottedOlive,
+  SheerCurtain,
+  StudioEnvironment,
+  Vase,
+  WindowGlow,
+} from './shophouse-decor'
 import { StoreSign } from './store-sign'
 import { WallTicker } from './wall-ticker'
 
-const WALL = '#f7f1e6'
-// Warm oak plank tones; the darker base plane shows through as gap lines.
-const FLOOR_BASE = '#c6b291'
-const PLANK_TONES = ['#e0cfb6', '#d8c4a7', '#dcc9ae'] as const
-const ROOM = { width: 14, depth: 10, height: 3.2 } as const
-const DOOR = { width: 2.4, height: 2.45 } as const
+const ROOM = { width: 12, depth: 9, height: 3.5 } as const
+const DOOR = { x: -3.2, width: 1.5, height: 2.35 } as const
+const WINDOW = { width: 3.4, height: 2.05, y: 1.55, z: 0.2 } as const
+const PLANKS = ['#d9bfa0', '#cfb493', '#e2c9ac', '#d4ba98'] as const
+const FRAME = '#332820'
 
-function Lighting({ ambience, accent }: { ambience: SceneConfig['ambience']; accent: string }) {
+function archGeometry(width: number, height: number) {
+  const radius = width / 2
+  const straight = height - radius
+  const shape = new Shape()
+  shape.moveTo(-radius, 0)
+  shape.lineTo(radius, 0)
+  shape.lineTo(radius, straight)
+  shape.absarc(0, straight, radius, 0, Math.PI, false)
+  shape.lineTo(-radius, 0)
+  return new ShapeGeometry(shape, 32)
+}
+
+function Lighting({
+  ambience,
+  accent,
+  shadows,
+}: {
+  ambience: SceneConfig['ambience']
+  accent: string
+  shadows: boolean
+}) {
   const settings = {
-    warm: { ambient: 1.25, key: 2.1, fill: 1.35, keyColor: '#ffe8c9' },
-    hype: { ambient: 0.95, key: 2.5, fill: 0.75, keyColor: '#edf4ff' },
-    minimal: { ambient: 1.5, key: 1.7, fill: 1.45, keyColor: '#fffdf7' },
+    warm: { sky: 0.4, sun: 2.65, bounce: 1.15, accent: 0.7 },
+    hype: { sky: 0.32, sun: 2.9, bounce: 0.9, accent: 1.15 },
+    minimal: { sky: 0.5, sun: 2.35, bounce: 1.3, accent: 0.45 },
   }[ambience]
 
   return (
     <>
-      {/* Sky tone kept warm: a cool-blue hemisphere turns the side walls
-          (which face away from the key light) sterile gray. */}
-      <hemisphereLight args={['#f3ead9', '#d9b98c', settings.ambient]} />
+      <StudioEnvironment tint={ambience === 'hype' ? '#eef1ff' : '#fff3e2'} />
+      <hemisphereLight args={['#fdf4e6', '#cbb291', settings.sky]} />
       <directionalLight
-        position={[4.5, 7, 4]}
-        intensity={settings.key}
-        color={settings.keyColor}
-        castShadow
+        position={[9, 6.5, 2.5]}
+        intensity={settings.sun}
+        color="#ffeed6"
+        castShadow={shadows}
         shadow-mapSize={[1024, 1024]}
+        shadow-camera-left={-7}
+        shadow-camera-right={7}
+        shadow-camera-top={6}
+        shadow-camera-bottom={-6}
+        shadow-bias={-0.0004}
       />
-      <pointLight position={[-4, 2.7, 0]} intensity={settings.fill} color="#fff4e6" />
       <pointLight
-        position={[0, 2.5, -3.8]}
-        intensity={ambience === 'hype' ? 4.5 : 2.5}
-        color={accent}
-        distance={5}
+        position={[0, 2.6, -3.2]}
+        intensity={settings.bounce}
+        color="#ffe4c2"
+        distance={7}
       />
-      {/* Soft daylight spilling in from the doorway. */}
-      <pointLight position={[0, 1.9, 4.6]} intensity={1.1} color="#fff6e4" distance={6} />
+      <pointLight
+        position={[3.4, 2.1, -3.4]}
+        intensity={0.85}
+        color="#ffd9a8"
+        distance={4}
+      />
+      <pointLight
+        position={[0, 2, -4]}
+        intensity={settings.accent}
+        color={accent}
+        distance={3}
+      />
     </>
   )
 }
 
-/**
- * Room shell. Walls and ceiling are single-sided planes facing inward, so
- * the follow-camera can sit outside any surface (entrance especially) and
- * still see the whole store — the dollhouse trick — while from inside the
- * room reads fully enclosed.
- */
 function RoomShell() {
-  const halfW = ROOM.width / 2
-  const halfD = ROOM.depth / 2
-  const doorSideWidth = (ROOM.width - DOOR.width) / 2
-  const doorSideX = DOOR.width / 2 + doorSideWidth / 2
-  const headerHeight = ROOM.height - DOOR.height
+  const arch = useMemo(() => archGeometry(3.65, 3.05), [])
+  const archTrim = useMemo(() => archGeometry(3.87, 3.18), [])
+  const halfWidth = ROOM.width / 2
+  const halfDepth = ROOM.depth / 2
+
+  const doorLeft = DOOR.x - DOOR.width / 2
+  const doorRight = DOOR.x + DOOR.width / 2
+  const frontSegments = [
+    { center: (-halfWidth + doorLeft) / 2, width: doorLeft + halfWidth },
+    { center: (doorRight + halfWidth) / 2, width: halfWidth - doorRight },
+  ]
+
+  const windowNear = WINDOW.z - WINDOW.width / 2
+  const windowFar = WINDOW.z + WINDOW.width / 2
+  const rightSegments = [
+    { center: (-halfDepth + windowNear) / 2, width: windowNear + halfDepth },
+    { center: (windowFar + halfDepth) / 2, width: halfDepth - windowFar },
+  ]
 
   return (
     <>
-      {/* Wood plank floor: strips over a darker base that reads as gap lines */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]}>
         <planeGeometry args={[ROOM.width, ROOM.depth]} />
-        <meshStandardMaterial color={FLOOR_BASE} roughness={0.98} />
+        <meshStandardMaterial color="#a98f70" roughness={0.98} />
       </mesh>
-      {Array.from({ length: 9 }, (_, i) => {
-        const plankDepth = ROOM.depth / 9
-        const z = -halfD + plankDepth / 2 + i * plankDepth
+      {Array.from({ length: 14 }, (_, index) => {
+        const depth = ROOM.depth / 14
         return (
           <mesh
-            key={i}
+            key={index}
             rotation={[-Math.PI / 2, 0, 0]}
-            position={[0, 0.005, z]}
+            position={[0, 0.002, -halfDepth + depth / 2 + index * depth]}
             receiveShadow
           >
-            <planeGeometry args={[ROOM.width, plankDepth - 0.03]} />
-            <meshStandardMaterial color={PLANK_TONES[i % 3]} roughness={0.96} />
+            <planeGeometry args={[ROOM.width, depth - 0.02]} />
+            <meshStandardMaterial color={PLANKS[index % PLANKS.length]} roughness={0.9} />
           </mesh>
         )
       })}
 
       <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, ROOM.height, 0]}>
         <planeGeometry args={[ROOM.width, ROOM.depth]} />
-        {/* Downward-facing plane gets almost no light — lift it so the
-            ceiling reads warm white instead of shadowed brown. */}
-        <meshStandardMaterial
-          color="#faf5ea"
-          roughness={0.98}
-          emissive="#f2e9d9"
-          emissiveIntensity={0.62}
-        />
+        <meshStandardMaterial color="#f6f0e4" roughness={0.98} />
       </mesh>
+      {[-4.8, -2.4, 0, 2.4, 4.8].map((x) => (
+        <mesh key={x} position={[x, ROOM.height - 0.09, 0]} castShadow>
+          <boxGeometry args={[0.16, 0.18, ROOM.depth]} />
+          <meshStandardMaterial color={OAK_DARK} roughness={0.85} />
+        </mesh>
+      ))}
 
-      {/* Back wall */}
-      <mesh position={[0, ROOM.height / 2, -halfD]} receiveShadow>
+      <mesh position={[0, ROOM.height / 2, -halfDepth]} receiveShadow>
         <planeGeometry args={[ROOM.width, ROOM.height]} />
-        <meshStandardMaterial color={WALL} roughness={0.96} />
+        <meshStandardMaterial color={PLASTER} roughness={0.96} />
       </mesh>
-      {/* Side walls */}
       <mesh
         rotation={[0, Math.PI / 2, 0]}
-        position={[-halfW, ROOM.height / 2, 0]}
+        position={[-halfWidth, ROOM.height / 2, 0]}
         receiveShadow
       >
         <planeGeometry args={[ROOM.depth, ROOM.height]} />
-        <meshStandardMaterial color={WALL} roughness={0.96} />
+        <meshStandardMaterial color={PLASTER} roughness={0.96} />
       </mesh>
-      <mesh
-        rotation={[0, -Math.PI / 2, 0]}
-        position={[halfW, ROOM.height / 2, 0]}
-        receiveShadow
-      >
-        <planeGeometry args={[ROOM.depth, ROOM.height]} />
-        <meshStandardMaterial color={WALL} roughness={0.96} />
-      </mesh>
-      {/* Front wall: two panels + header over the doorway */}
-      {[-doorSideX, doorSideX].map((x) => (
-        <mesh key={x} rotation={[0, Math.PI, 0]} position={[x, ROOM.height / 2, halfD]}>
-          <planeGeometry args={[doorSideWidth, ROOM.height]} />
-          <meshStandardMaterial color={WALL} roughness={0.96} />
+
+      {frontSegments.map((segment) => (
+        <mesh
+          key={segment.center}
+          rotation={[0, Math.PI, 0]}
+          position={[segment.center, ROOM.height / 2, halfDepth]}
+          receiveShadow
+        >
+          <planeGeometry args={[segment.width, ROOM.height]} />
+          <meshStandardMaterial color={PLASTER} roughness={0.96} />
         </mesh>
       ))}
       <mesh
         rotation={[0, Math.PI, 0]}
-        position={[0, DOOR.height + headerHeight / 2, halfD]}
+        position={[DOOR.x, (DOOR.height + ROOM.height) / 2, halfDepth]}
       >
-        <planeGeometry args={[DOOR.width, headerHeight]} />
-        <meshStandardMaterial color={WALL} roughness={0.96} />
+        <planeGeometry args={[DOOR.width, ROOM.height - DOOR.height]} />
+        <meshStandardMaterial color={PLASTER} roughness={0.96} />
       </mesh>
-
-      {/* Ink door trim — posts and lintel around the opening */}
-      {[-1, 1].map((side) => (
+      {[-DOOR.width / 2, DOOR.width / 2].map((offset) => (
         <mesh
-          key={side}
-          position={[side * (DOOR.width / 2 + 0.04), DOOR.height / 2, halfD - 0.02]}
+          key={offset}
+          position={[DOOR.x + offset, DOOR.height / 2, halfDepth - 0.03]}
           castShadow
         >
-          <boxGeometry args={[0.09, DOOR.height, 0.12]} />
+          <boxGeometry args={[0.08, DOOR.height, 0.1]} />
           <meshStandardMaterial color={INK} roughness={0.82} />
         </mesh>
       ))}
-      <mesh position={[0, DOOR.height + 0.045, halfD - 0.02]} castShadow>
-        <boxGeometry args={[DOOR.width + 0.26, 0.09, 0.12]} />
+      <mesh position={[DOOR.x, DOOR.height + 0.04, halfDepth - 0.03]} castShadow>
+        <boxGeometry args={[DOOR.width + 0.24, 0.08, 0.1]} />
         <meshStandardMaterial color={INK} roughness={0.82} />
       </mesh>
 
-      {/* Ink baseboards ground the walls */}
-      <mesh position={[0, 0.045, -halfD + 0.015]}>
-        <boxGeometry args={[ROOM.width, 0.09, 0.03]} />
-        <meshStandardMaterial color={INK} roughness={0.9} />
-      </mesh>
-      {[-1, 1].map((side) => (
-        <mesh key={side} position={[side * (halfW - 0.015), 0.045, 0]}>
-          <boxGeometry args={[0.03, 0.09, ROOM.depth]} />
-          <meshStandardMaterial color={INK} roughness={0.9} />
+      {rightSegments.map((segment) => (
+        <mesh
+          key={segment.center}
+          rotation={[0, -Math.PI / 2, 0]}
+          position={[halfWidth, ROOM.height / 2, segment.center]}
+          receiveShadow
+        >
+          <planeGeometry args={[segment.width, ROOM.height]} />
+          <meshStandardMaterial color={PLASTER} roughness={0.96} />
         </mesh>
       ))}
-      {[-doorSideX, doorSideX].map((x) => (
-        <mesh key={x} position={[x, 0.045, halfD - 0.015]}>
-          <boxGeometry args={[doorSideWidth, 0.09, 0.03]} />
-          <meshStandardMaterial color={INK} roughness={0.9} />
+      <mesh
+        rotation={[0, -Math.PI / 2, 0]}
+        position={[
+          halfWidth,
+          (WINDOW.y + WINDOW.height / 2 + ROOM.height) / 2,
+          WINDOW.z,
+        ]}
+      >
+        <planeGeometry args={[WINDOW.width, ROOM.height - WINDOW.y - WINDOW.height / 2]} />
+        <meshStandardMaterial color={PLASTER} roughness={0.96} />
+      </mesh>
+      <mesh
+        rotation={[0, -Math.PI / 2, 0]}
+        position={[halfWidth, (WINDOW.y - WINDOW.height / 2) / 2, WINDOW.z]}
+        receiveShadow
+      >
+        <planeGeometry args={[WINDOW.width, WINDOW.y - WINDOW.height / 2]} />
+        <meshStandardMaterial color={PLASTER} roughness={0.96} />
+      </mesh>
+      <WindowGlow
+        width={WINDOW.width + 0.6}
+        height={WINDOW.height + 0.5}
+        position={[halfWidth + 0.35, WINDOW.y, WINDOW.z]}
+        rotation={[0, -Math.PI / 2, 0]}
+      />
+      {[-WINDOW.width / 6, WINDOW.width / 6].map((offset) => (
+        <mesh key={offset} position={[halfWidth - 0.01, WINDOW.y, WINDOW.z + offset]}>
+          <boxGeometry args={[0.06, WINDOW.height, 0.045]} />
+          <meshStandardMaterial color={INK} roughness={0.8} />
+        </mesh>
+      ))}
+      <mesh position={[halfWidth - 0.01, WINDOW.y, WINDOW.z]}>
+        <boxGeometry args={[0.06, 0.045, WINDOW.width]} />
+        <meshStandardMaterial color={INK} roughness={0.8} />
+      </mesh>
+      {[-WINDOW.width / 2, WINDOW.width / 2].map((offset) => (
+        <mesh key={offset} position={[halfWidth - 0.02, WINDOW.y, WINDOW.z + offset]}>
+          <boxGeometry args={[0.1, WINDOW.height + 0.1, 0.07]} />
+          <meshStandardMaterial color={INK} roughness={0.8} />
+        </mesh>
+      ))}
+      <mesh position={[halfWidth - 0.02, WINDOW.y + WINDOW.height / 2, WINDOW.z]}>
+        <boxGeometry args={[0.1, 0.07, WINDOW.width + 0.14]} />
+        <meshStandardMaterial color={INK} roughness={0.8} />
+      </mesh>
+      <mesh
+        position={[halfWidth - 0.06, WINDOW.y - WINDOW.height / 2 - 0.025, WINDOW.z]}
+        castShadow
+      >
+        <boxGeometry args={[0.18, 0.05, WINDOW.width + 0.2]} />
+        <meshStandardMaterial color={OAK_DARK} roughness={0.85} />
+      </mesh>
+      <mesh
+        position={[halfWidth - 0.28, WINDOW.y + WINDOW.height / 2 + 0.1, WINDOW.z]}
+        rotation={[0, 0, Math.PI / 2]}
+      >
+        <cylinderGeometry args={[0.014, 0.014, WINDOW.width + 0.5, 10]} />
+        <meshStandardMaterial color={BRASS} metalness={0.8} roughness={0.35} />
+      </mesh>
+      <SheerCurtain
+        width={WINDOW.width + 0.3}
+        height={WINDOW.height + 0.25}
+        position={[halfWidth - 0.3, WINDOW.y - 0.05, WINDOW.z]}
+        rotation={[0, -Math.PI / 2, 0]}
+      />
+
+      <mesh geometry={archTrim} position={[0, 0.2, -halfDepth + 0.025]}>
+        <meshStandardMaterial color={OAK_DARK} roughness={0.85} />
+      </mesh>
+      <mesh geometry={arch} position={[0, 0.27, -halfDepth + 0.045]} receiveShadow>
+        <meshStandardMaterial color="#e0d3bc" roughness={0.97} />
+      </mesh>
+
+      {[
+        [0, -halfDepth + 0.02, ROOM.width],
+        [0, halfDepth - 0.02, ROOM.width],
+      ].map(([x, z, width]) => (
+        <mesh key={z} position={[x, 0.05, z]}>
+          <boxGeometry args={[width, 0.1, 0.035]} />
+          <meshStandardMaterial color={OAK_DARK} roughness={0.88} />
+        </mesh>
+      ))}
+      <mesh position={[-halfWidth + 0.02, 0.05, 0]}>
+        <boxGeometry args={[0.035, 0.1, ROOM.depth]} />
+        <meshStandardMaterial color={OAK_DARK} roughness={0.88} />
+      </mesh>
+      {[-halfDepth + 0.015, halfDepth - 0.015].map((z) => (
+        <mesh key={z} position={[0, ROOM.height - 0.05, z]}>
+          <boxGeometry args={[ROOM.width, 0.1, 0.03]} />
+          <meshStandardMaterial color="#ece4d4" roughness={0.95} />
         </mesh>
       ))}
 
-      {/* Ceiling track lighting above each shelf wall */}
-      {[-1, 1].map((side) => (
-        <mesh key={side} position={[side * 5.55, ROOM.height - 0.07, 0]}>
-          <boxGeometry args={[0.1, 0.05, 8.6]} />
-          <meshStandardMaterial color={INK} roughness={0.85} />
-        </mesh>
+      {/* A complete dark-oak structural ring makes the dollhouse boundary
+          explicit. The wall planes remain single-sided so the camera can
+          look in, while these beams show exactly where the shop begins and
+          ends from every approach. */}
+      {[-halfDepth + 0.04, halfDepth - 0.04].map((z) => (
+        <group key={`cross-${z}`}>
+          <mesh position={[0, ROOM.height - 0.11, z]} castShadow>
+            <boxGeometry
+              args={[
+                ROOM.width + 0.2,
+                z > 0 ? 0.3 : 0.22,
+                z > 0 ? 0.28 : 0.22,
+              ]}
+            />
+            <meshStandardMaterial color={FRAME} roughness={0.86} />
+          </mesh>
+          <mesh position={[0, 0.09, z]} castShadow>
+            <boxGeometry args={[ROOM.width + 0.2, 0.18, 0.2]} />
+            <meshStandardMaterial color={FRAME} roughness={0.9} />
+          </mesh>
+        </group>
       ))}
+      {[-halfWidth + 0.04, halfWidth - 0.04].map((x) => (
+        <group key={`side-${x}`}>
+          <mesh position={[x, ROOM.height - 0.11, 0]} castShadow>
+            <boxGeometry args={[0.22, 0.22, ROOM.depth]} />
+            <meshStandardMaterial color={FRAME} roughness={0.86} />
+          </mesh>
+          <mesh position={[x, 0.09, 0]} castShadow>
+            <boxGeometry args={[0.2, 0.18, ROOM.depth]} />
+            <meshStandardMaterial color={FRAME} roughness={0.9} />
+          </mesh>
+        </group>
+      ))}
+      {[-halfWidth + 0.04, halfWidth - 0.04].flatMap((x) =>
+        [-halfDepth + 0.04, halfDepth - 0.04].map((z) => (
+          <mesh key={`post-${x}-${z}`} position={[x, ROOM.height / 2, z]} castShadow>
+            <boxGeometry args={[0.24, ROOM.height, 0.24]} />
+            <meshStandardMaterial color={FRAME} roughness={0.86} />
+          </mesh>
+        )),
+      )}
     </>
   )
 }
 
-/**
- * Warmth without clutter: a few still props, scaled back as the ambience
- * gets more energetic — the home-bakery default reads cosiest, `minimal`
- * stays nearly bare gallery.
- */
-function Decor({ ambience, accent }: { ambience: SceneConfig['ambience']; accent: string }) {
-  const halfD = ROOM.depth / 2
-  const cosy = ambience === 'warm'
-  const sparse = ambience === 'minimal'
+type Placement = {
+  position: [number, number, number]
+  rotation: [number, number, number]
+}
+
+const PRODUCT_PLACEMENTS: readonly Placement[] = [
+  // The first four products seed four different walls. Additional products
+  // keep circulating around the room instead of filling one gallery row.
+  { position: [-5.82, 1.72, 1.9], rotation: [0, Math.PI / 2, 0] },
+  { position: [5.82, 1.72, 3.22], rotation: [0, -Math.PI / 2, 0] },
+  { position: [-4.7, 1.72, -4.32], rotation: [0, 0, 0] },
+  { position: [-0.25, 1.72, 4.32], rotation: [0, Math.PI, 0] },
+  { position: [-5.82, 1.72, -2.9], rotation: [0, Math.PI / 2, 0] },
+  { position: [5.82, 1.72, -3.22], rotation: [0, -Math.PI / 2, 0] },
+  { position: [-2.82, 1.72, -4.32], rotation: [0, 0, 0] },
+  { position: [2.05, 1.72, 4.32], rotation: [0, Math.PI, 0] },
+  { position: [-5.82, 1.72, 0], rotation: [0, Math.PI / 2, 0] },
+  { position: [4.35, 1.72, 4.32], rotation: [0, Math.PI, 0] },
+  { position: [-5.82, 1.72, 3.3], rotation: [0, Math.PI / 2, 0] },
+  { position: [-5.82, 1.72, -1.45], rotation: [0, Math.PI / 2, 0] },
+]
+
+function ShopDecor({ accent }: { accent: string }) {
+  const halfDepth = ROOM.depth / 2
 
   return (
     <>
-      {/* Scalloped awning over the doorway — the welcome gesture */}
-      <Awning position={[0, 2.62, halfD - 0.04]} accent={accent} />
-
-      {/* Visible light sources: string bulbs + pendants flanking the counter.
-          `minimal` keeps the bare gallery ceiling. */}
-      {!sparse && (
-        <>
-          <StringLights from={[-6.85, 3.05, -1.4]} to={[6.85, 3.05, -1.4]} />
-          <StringLights from={[-6.85, 3.05, 1.9]} to={[6.85, 3.05, 1.9]} />
-          <PendantLamp position={[-2.9, 3.2, -4.05]} />
-          <PendantLamp position={[2.9, 3.2, -4.05]} />
-        </>
-      )}
-
-      {/* Entrance mat — the one accent-colored surface on the floor */}
-      <RoundedRect
-        width={2.1}
-        depth={1.15}
-        radius={0.18}
-        color={accent}
-        opacity={0.28}
-        position={[0, 0.012, halfD - 0.85]}
+      <Awning
+        position={[DOOR.x, 2.5, halfDepth - 0.05]}
+        accent={accent}
+        width={2.6}
+      />
+      <BorderedRug
+        width={4.8}
+        depth={3.2}
+        color="#e7dcc6"
+        border="#b5764f"
+        position={[0.3, 0.012, 0.7]}
       />
 
-      {!sparse && (
-        <RoundedRect
-          width={4.6}
-          depth={3.1}
-          radius={0.5}
-          color={cosy ? '#d2c0a4' : '#c9b89e'}
-          position={[0, 0.011, 0.1]}
-        />
-      )}
+      <group position={[3.5, 0, -3.55]}>
+        <RoundedBox
+          args={[2.7, 0.92, 0.72]}
+          radius={0.03}
+          smoothness={3}
+          position={[0, 0.46, 0]}
+          castShadow
+          receiveShadow
+        >
+          <meshStandardMaterial color="#f4eee1" roughness={0.92} />
+        </RoundedBox>
+        {Array.from({ length: 16 }, (_, index) => (
+          <mesh key={index} position={[-1.26 + index * 0.168, 0.46, 0.37]}>
+            <cylinderGeometry
+              args={[0.035, 0.035, 0.86, 10, 1, false, -Math.PI / 2, Math.PI]}
+            />
+            <meshStandardMaterial color="#c8a273" roughness={0.85} />
+          </mesh>
+        ))}
+        <mesh position={[0, 0.95, 0]} castShadow>
+          <boxGeometry args={[2.82, 0.06, 0.84]} />
+          <meshStandardMaterial color="#ddd0ba" roughness={0.65} />
+        </mesh>
+        <BookStack position={[-0.9, 0.98, 0.05]} count={3} rotation={0.2} />
+        <Vase position={[-0.45, 0.98, -0.1]} scale={0.9} />
+        <CounterClutter position={[0.85, 0.98, -0.05]} />
+      </group>
+      <PendantLamp position={[2.7, ROOM.height, -3.55]} drop={0.95} />
+      <PendantLamp position={[4.3, ROOM.height, -3.55]} drop={0.95} />
 
-      <Plant position={[-6.2, 0, -4.3]} scale={1.05} tall />
-      {!sparse && <Plant position={[6.25, 0, -4.35]} tall />}
-      {cosy && (
-        <>
-          <Plant position={[-1.85, 0, 4.35]} scale={0.9} />
-          <Plant position={[1.85, 0, 4.4]} scale={0.8} />
-        </>
-      )}
-      {/* Small plant + clutter live on the counter top (y ≈ 0.96) */}
-      {!sparse && <Plant position={[-2.15, 0.96, -4.2]} scale={0.62} />}
-      <CounterClutter position={[1.75, 0.96, -4.15]} />
-
-      {/* Quiet prints flanking the doorway, facing into the room */}
-      <WallArt
-        position={[-3.4, 1.55, halfD - 0.06]}
-        rotation={[0, Math.PI, 0]}
-        variant="arch"
-      />
-      {!sparse && (
-        <WallArt
-          position={[3.4, 1.55, halfD - 0.06]}
-          rotation={[0, Math.PI, 0]}
-          variant="sun"
-        />
-      )}
+      <PottedOlive position={[1.8, 0, -4.05]} scale={0.92} />
+      <PottedOlive position={[5.25, 0, 3.85]} scale={0.72} />
+      <Vase position={[-5.5, 0, 4]} scale={1.5} color="#d9cfc0" stem={false} />
+      <BookStack position={[4.9, 0, -4]} count={4} rotation={-0.4} />
     </>
   )
-}
-
-function slotPosition(index: number) {
-  const left = index % 2 === 0
-  const row = Math.floor(index / 2)
-  return {
-    position: [left ? -6.62 : 6.62, 1.72, 2.15 - row * 1.18] as [
-      number,
-      number,
-      number,
-    ],
-    rotation: [0, left ? Math.PI / 2 : -Math.PI / 2, 0] as [
-      number,
-      number,
-      number,
-    ],
-  }
 }
 
 export function StoreTemplate({
@@ -303,93 +444,37 @@ export function StoreTemplate({
     () => new Map(products.map((product) => [product.id, product])),
     [products],
   )
-  const hero = config.slots.find((slot) => slot.kind === 'plinth')
-  const shelfSlots = config.slots.filter((slot) => slot.kind === 'shelf')
 
   return (
     <>
-      <color attach="background" args={['#eee9e1']} />
-      <fog attach="fog" args={['#eee9e1', 13, 23]} />
-      <Lighting ambience={config.ambience} accent={accent} />
-
+      <color attach="background" args={['#e9e0cf']} />
+      <fog attach="fog" args={['#e9e0cf', 18, 34]} />
+      <Lighting ambience={config.ambience} accent={accent} shadows={shadows} />
       <RoomShell />
-      <Decor ambience={config.ambience} accent={accent} />
+      <ShopDecor accent={accent} />
 
-      {/* Quiet accent trim mounted flush on the walls — floating it off the
-          surface reads as a glitch from oblique angles. */}
-      <mesh position={[-6.97, 0.42, 0]}>
-        <boxGeometry args={[0.035, 0.035, 8.6]} />
-        <meshBasicMaterial color={accent} transparent opacity={0.7} />
-      </mesh>
-      <mesh position={[6.97, 0.42, 0]}>
-        <boxGeometry args={[0.035, 0.035, 8.6]} />
-        <meshBasicMaterial color={accent} transparent opacity={0.7} />
-      </mesh>
-
-      <RoundedBox args={[5.4, 0.95, 0.9]} radius={0.12} smoothness={3} position={[0, 0.48, -4.2]} castShadow>
-        <meshStandardMaterial color="#fffdf8" roughness={0.9} />
-      </RoundedBox>
-      <mesh position={[0, 0.93, -4.18]}>
-        <boxGeometry args={[5.45, 0.06, 0.94]} />
-        <meshStandardMaterial color={INK} roughness={0.82} />
-      </mesh>
-      <StoreSign config={config} accent={accent} closed={windowClosed} />
-      <WallTicker
-        announcement={announcement}
+      <StoreSign
+        config={config}
+        accent={accent}
+        closed={windowClosed}
+        position={[0, 2.22, -4.34]}
+        scale={0.72}
       />
+      <WallTicker announcement={announcement} position={[0, 1.18, -4.29]} />
 
-      {hero && productsById.get(hero.productId) && (
-        <group>
-          <RoundedBox args={[2.1, 0.68, 1.25]} radius={0.12} smoothness={3} position={[0, 0.34, 1.65]} castShadow receiveShadow>
-            <meshStandardMaterial color="#fffdf8" roughness={0.92} />
-          </RoundedBox>
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.015, 1.65]}>
-            <circleGeometry args={[1.15, 32]} />
-            <meshBasicMaterial color={accent} transparent opacity={0.18} />
-          </mesh>
-          <group position={[0, 1.52, 1.62]}>
-            <ProductFrame
-              product={productsById.get(hero.productId)!}
-              imageUrl={hero.imageUrl}
-              accent={accent}
-              disabled={windowClosed}
-              hero
-              sparkleId={
-                announcement &&
-                announcement.kind !== 'summary' &&
-                announcement.productName === productsById.get(hero.productId)!.name
-                  ? announcement.id
-                  : undefined
-              }
-              onSelect={onSelectProduct}
-            />
-          </group>
-        </group>
-      )}
-
-      {shelfSlots.map((slot, index) => {
+      {config.slots.map((slot, index) => {
         const product = productsById.get(slot.productId)
-        if (!product) return null
-        const placement = slotPosition(index)
+        const placement = PRODUCT_PLACEMENTS[index]
+        if (!product || !placement) return null
+
         return (
           <group
             key={slot.productId}
             position={placement.position}
             rotation={placement.rotation}
+            scale={0.78}
           >
-            <spotLight
-              position={[0, 1.25, 1.4]}
-              intensity={2.5}
-              angle={0.48}
-              penumbra={0.8}
-              distance={4}
-              color="#fff0db"
-            />
-            {/* Gallery track can, hung from the ceiling rail above */}
-            <mesh position={[0, 1.41, 1.05]} rotation={[0.7, 0, 0]}>
-              <cylinderGeometry args={[0.05, 0.06, 0.16, 14]} />
-              <meshStandardMaterial color={INK} roughness={0.85} />
-            </mesh>
+            <GalleryPictureLight />
             <ProductFrame
               product={product}
               imageUrl={slot.imageUrl}
@@ -408,19 +493,13 @@ export function StoreTemplate({
         )
       })}
 
-      <Html center position={[0, 0.15, 4.55]} distanceFactor={5}>
-        <span className="pointer-events-none whitespace-nowrap rounded-full bg-white/90 px-3 py-1 font-mono text-[9px] tracking-widest text-[#706a63] uppercase">
-          entrance · walk in
-        </span>
-      </Html>
-
       {shadows && (
         <ContactShadows
           position={[0, 0.015, 0]}
-          opacity={0.28}
-          scale={13}
-          blur={2.5}
-          far={5}
+          opacity={0.32}
+          scale={14}
+          blur={2.2}
+          far={4.5}
           frames={1}
         />
       )}

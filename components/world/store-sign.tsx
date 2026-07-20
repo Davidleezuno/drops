@@ -58,16 +58,20 @@ export function StoreSign({
   config,
   accent,
   closed,
+  position = [0, 2.28, -4.62],
+  scale = 1,
 }: {
   config: SceneConfig
   accent: string
   closed: boolean
+  position?: [number, number, number]
+  scale?: number
 }) {
   const glow = useGlowTexture()
   const statusText = closed ? 'CLOSED' : 'LIVE IN STORE'
 
   return (
-    <group position={[0, 2.28, -4.62]} rotation={[0, 0, 0.012]}>
+    <group position={position} rotation={[0, 0, 0.012]} scale={scale}>
       {/* Accent halo on the wall behind the hanging board */}
       <mesh position={[0, 0.1, -0.34]}>
         <planeGeometry args={[6.4, 3.1]} />

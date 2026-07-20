@@ -59,7 +59,10 @@ export function PlayerControls({
   onPose: (pose: WorldPose) => void
 }) {
   const group = useRef<Group>(null)
-  const yaw = useRef(0)
+  // Enter through the shophouse doorway already turned a little toward the
+  // gallery wall. On a phone's narrow field of view this reveals merchandise
+  // immediately without promoting one product into a central hero.
+  const yaw = useRef(-0.5)
   const keys = useRef(new Set<string>())
   const velocity = useRef(new Vector3())
   const { camera, gl } = useThree()
@@ -179,7 +182,7 @@ export function PlayerControls({
   })
 
   return (
-    <group ref={group} position={[0, 0, 3.7]}>
+    <group ref={group} position={[-3.2, 0, 3.7]}>
       <Avatar name={name} tint={tint} reaction={reaction} local />
     </group>
   )

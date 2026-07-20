@@ -19,13 +19,13 @@ const products = Array.from({ length: 14 }, (_, index) => ({
 }))
 
 describe('buildSceneConfig', () => {
-  it('keeps listing order, spotlights the first product, and truncates overflow', () => {
+  it('keeps listing order, gives products equal wall slots, and truncates overflow', () => {
     const config = buildSceneConfig(products, theme, 'Sarah')
 
     expect(config?.slots).toHaveLength(MAX_WORLD_PRODUCTS)
     expect(config?.slots[0]).toMatchObject({
       productId: 'product-0',
-      kind: 'plinth',
+      kind: 'shelf',
     })
     expect(config?.slots[1]).toMatchObject({
       productId: 'product-1',

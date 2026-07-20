@@ -40,14 +40,14 @@ export function buildSceneConfig(
       sellerName,
     },
     ambience: theme.voice.tone,
-    slots: products.slice(0, MAX_WORLD_PRODUCTS).map((product, index) => ({
+    slots: products.slice(0, MAX_WORLD_PRODUCTS).map((product) => ({
       productId: product.id,
       imageUrl:
         product.enhanced_image_url ??
         product.image_url ??
         product.original_image_url ??
         null,
-      kind: index === 0 ? 'plinth' : 'shelf',
+      kind: 'shelf',
     })),
   }
 }
