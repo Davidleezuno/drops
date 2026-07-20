@@ -10,15 +10,11 @@
 import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
 
-import {
-  buildDropDraftMessages,
-  createDropDraftAgent,
-} from '@/lib/agents/drop-draft-agent'
+import { generateDropDraft } from '@/lib/agents/drop-draft-agent'
 import type { DraftImage } from '@/lib/agents/types'
 import {
   dropDraftSchema,
   type DropDraft,
-  type StorefrontTheme,
 } from '@/lib/drop-builder'
 import { draftEvalCases, type DraftEvalCase } from './eval-cases'
 
@@ -34,19 +30,11 @@ type EvalResult = {
   schema: 'PASS' | 'FAIL'
   products: 'PASS' | 'FAIL'
   vertical: 'PASS' | 'FAIL'
-  palette: 'PASS' | 'FAIL'
   needsInput: 'PASS' | 'FAIL'
   seconds: string
   draft?: DropDraft
   notes: string[]
   schemaInvalid?: boolean
-}
-
-function sameAccent(
-  first: StorefrontTheme['accent'],
-  second: StorefrontTheme['accent'],
-) {
-  return first.l === second.l && first.c === second.c && first.h === second.h
 }
 
 function normalizedProduct(product: { name: string; price: number | null }) {
@@ -81,10 +69,7 @@ async function runCase(evalCase: DraftEvalCase): Promise<EvalResult> {
 
   try {
     const images = await loadImages(evalCase.images)
-    const agent = createDropDraftAgent(images)
-    const { output } = await agent.generate({
-      messages: buildDropDraftMessages(images),
-    })
+    const { draft: output } = await generateDropDraft(images)
 
     let draft: DropDraft
     try {
@@ -96,7 +81,6 @@ async function runCase(evalCase: DraftEvalCase): Promise<EvalResult> {
         schema: 'FAIL',
         products: 'FAIL',
         vertical: 'FAIL',
-        palette: 'FAIL',
         needsInput: 'FAIL',
         seconds: ((performance.now() - startedAt) / 1_000).toFixed(1),
         notes,
@@ -106,9 +90,6 @@ async function runCase(evalCase: DraftEvalCase): Promise<EvalResult> {
 
     const productPass = productsMatch(draft.products, evalCase.products)
     const verticalPass = draft.theme.vertical === evalCase.vertical
-    const palettePass = draft.paletteCandidates.some((candidate) =>
-      sameAccent(candidate, draft.theme.accent),
-    )
     const needsInputPass = evalCase.expectedNeedsInput.every((field) =>
       draft.needsInput.includes(field),
     )
@@ -125,7 +106,6 @@ async function runCase(evalCase: DraftEvalCase): Promise<EvalResult> {
         `vertical: expected ${evalCase.vertical}, received ${draft.theme.vertical}`,
       )
     }
-    if (!palettePass) notes.push('theme.accent is not in paletteCandidates')
     if (!needsInputPass) {
       notes.push(
         `needsInput: expected at least ${evalCase.expectedNeedsInput.join(', ')}, received ${draft.needsInput.join(', ')}`,
@@ -137,7 +117,6 @@ async function runCase(evalCase: DraftEvalCase): Promise<EvalResult> {
       schema: 'PASS',
       products: productPass ? 'PASS' : 'FAIL',
       vertical: verticalPass ? 'PASS' : 'FAIL',
-      palette: palettePass ? 'PASS' : 'FAIL',
       needsInput: needsInputPass ? 'PASS' : 'FAIL',
       seconds: ((performance.now() - startedAt) / 1_000).toFixed(1),
       draft,
@@ -150,7 +129,6 @@ async function runCase(evalCase: DraftEvalCase): Promise<EvalResult> {
       schema: 'FAIL',
       products: 'FAIL',
       vertical: 'FAIL',
-      palette: 'FAIL',
       needsInput: 'FAIL',
       seconds: ((performance.now() - startedAt) / 1_000).toFixed(1),
       notes,
@@ -193,7 +171,6 @@ async function main() {
       schema: result.schema,
       products: result.products,
       vertical: result.vertical,
-      palette: result.palette,
       needsInput: result.needsInput,
       seconds: result.seconds,
     })),

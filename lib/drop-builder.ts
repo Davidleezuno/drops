@@ -84,10 +84,6 @@ export const storefrontThemeSchema = z.object({
 export const dropDraftSchema = z.object({
   products: extractedMenuSchema.shape.products,
   theme: storefrontThemeSchema,
-  paletteCandidates: z
-    .array(storefrontThemeSchema.shape.accent)
-    .min(3)
-    .max(5),
   needsInput: z.array(
     z.enum(['price', 'stock', 'window', 'deliveryFee', 'pickup']),
   ),

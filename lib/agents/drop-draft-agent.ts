@@ -1,91 +1,87 @@
-import {
-  Output,
-  ToolLoopAgent,
-  stepCountIs,
-  tool,
-  type LanguageModel,
-  type ModelMessage,
-} from 'ai'
+import { generateText, Output, type LanguageModel, type ModelMessage } from 'ai'
 import { z } from 'zod'
 
-import { dropDraftSchema } from '@/lib/drop-builder'
-import { proposePalette } from '@/lib/agents/tools/propose-palette'
+import {
+  dropDraftSchema,
+  storefrontThemeSchema,
+  type DropDraft,
+} from '@/lib/drop-builder'
 import type { DraftImage } from '@/lib/agents/types'
+import { clampTheme } from '@/lib/theme'
 
-const DEFAULT_DRAFT_MODEL = 'anthropic/claude-sonnet-5'
+const DEFAULT_DRAFT_MODEL = 'google/gemini-3.5-flash'
+const DEFAULT_FALLBACK_MODEL = 'openai/gpt-5.6-terra'
+const GENERATION_TIMEOUT_MS = 20_000
 
-export const DROP_DRAFT_AGENT_INSTRUCTIONS = `You are the drop builder for Drops, a storefront for people with a
-following. From the seller's uploaded images (menu cards, product photos, live-sale
-prep sheets) you produce ONE structured draft: the products for sale and a storefront
-design that fits the seller.
+const catalogDraftSchema = z.object({
+  products: z
+    .array(
+      z.object({
+        name: z.string().min(1).max(120),
+        variant: z.string().max(120).nullable(),
+        price: z.number().positive().max(100_000).nullable(),
+        stock: z.number().int().nonnegative().max(100_000).nullable(),
+        sourceImageIndex: z.number().int().min(0).max(4),
+      }),
+    )
+    .min(1)
+    .max(30),
+  needsInput: dropDraftSchema.shape.needsInput,
+})
+
+// Let deterministic code trim generated marketing copy. Rejecting a complete
+// vision response because it is a few characters long would waste a fallback.
+const generatedThemeSchema = storefrontThemeSchema.extend({
+  voice: storefrontThemeSchema.shape.voice.extend({
+    dropTitle: z.string().max(500),
+    sellerNote: z.string().max(1_000).nullable(),
+  }),
+  ogCard: storefrontThemeSchema.shape.ogCard.extend({
+    headline: z.string().max(500),
+    badge: z.string().max(500).nullable(),
+  }),
+})
+
+const themeDraftSchema = z.object({
+  theme: generatedThemeSchema,
+})
+
+export const CATALOG_INSTRUCTIONS = `Read the seller's uploaded images and create accurate, editable commerce listings.
 
 Rules:
-- Make one product per distinct item/photo. Never invent a price or stock count; return null
-  when it is not visibly stated so the seller can fill only that missing fact.
-- Separate inventory choices from shared-stock customizations. A size, format, portion, or
-  other choice is an inventoryChoice only when the image provides evidence that it is sold
-  as a distinct option. Chilli/no chilli, gift notes, and preparation preferences are
-  customizations because they all consume the same product stock.
-- Group visible variants under one product. Do not generate a size range or option values
-  merely because they are common for that category. The editor provides quick presets.
-- Classify the vertical from what you see; choose the archetype that best sells it:
-  fnb → menu, photo-forward products → grid, one hero item → spotlight, group-buy → tiers.
-  This is a default the seller can change — pick the strongest fit, not a safe middle.
-- Call proposePalette to get candidate accents designed for this seller's vibe, then
-  choose the primary accent from those candidates. Return ALL candidates in
-  paletteCandidates so the seller can pick a different one.
-- Write dropTitle/sellerNote/ogCard in the seller's own register — mirror the language
-  and tone of any text visible in the images (including Singlish). Short. No emoji spam.
-- If prices, stock counts, a selling window, or delivery details are not visible in the images,
-  list them in needsInput. Do not guess them.
-- You produce a draft only. You never publish.`
+- Make one product per distinct item/photo. Never invent a price or stock count; return null when it is not visibly stated.
+- Group visible variants under one product when possible. Do not generate common options that are not shown.
+- sourceImageIndex is the zero-based index of the clearest uploaded image showing the product.
+- List every missing seller decision in needsInput. Do not guess.`
 
-type CreateDropDraftAgentOptions = {
+export const THEME_INSTRUCTIONS = `Design one restrained storefront theme from the seller's uploaded images.
+
+Rules:
+- Classify the vertical and choose the archetype that best sells it: fnb → menu, photo-forward products → grid, one hero item → spotlight. Do not choose tiers.
+- Pick one distinctive OKLCH accent that suits the seller and remains within the schema's legibility bounds.
+- Write dropTitle, sellerNote, and ogCard in the seller's register. Mirror visible language, including Singlish. Keep it short and avoid emoji spam.
+- Use an upload crop only when an image has a strong hero composition; otherwise use no hero.
+- Produce a proposal only. Never publish.`
+
+type GenerateDropDraftOptions = {
   model?: LanguageModel
-  designModel?: LanguageModel
+  fallbackModel?: LanguageModel
+  timeoutMs?: number
 }
 
-export function createDropDraftAgent(
-  images: DraftImage[],
-  options: CreateDropDraftAgentOptions = {},
-) {
-  const model = options.model ?? process.env.DRAFT_MODEL ?? DEFAULT_DRAFT_MODEL
-
-  return new ToolLoopAgent({
-    model,
-    instructions: DROP_DRAFT_AGENT_INSTRUCTIONS,
-    tools: {
-      proposePalette: tool({
-        description:
-          "Propose 3-5 candidate accent colors (OKLCH) designed for this seller's vibe — what they sell, who they sell to, and the mood of their imagery. Each candidate is returned pre-clamped for legibility on the storefront background.",
-        inputSchema: z.object({
-          vibe: z.string().max(200),
-        }),
-        execute: async ({ vibe }) =>
-          proposePalette(vibe, images, { model: options.designModel }),
-      }),
-    },
-    stopWhen: stepCountIs(8),
-    output: Output.object({ schema: dropDraftSchema, name: 'drop_draft' }),
-  })
+export type DraftGenerationTiming = {
+  catalogMs: number
+  themeMs: number
+  totalMs: number
+  fallbackParts: Array<'catalog' | 'theme'>
 }
 
-export function buildDropDraftMessages(
-  images: DraftImage[],
-  nudge?: 'bolder' | 'calmer',
-): ModelMessage[] {
-  const nudgeSentence = nudge
-    ? ` The seller wants a ${nudge} look — re-propose the design.`
-    : ''
-
+function buildMessages(images: DraftImage[], prompt: string): ModelMessage[] {
   return [
     {
       role: 'user',
       content: [
-        {
-          type: 'text',
-          text: `Create the drop draft from these images.${nudgeSentence}`,
-        },
+        { type: 'text', text: prompt },
         ...images.map((image) => ({
           type: 'image' as const,
           image: image.bytes,
@@ -94,4 +90,140 @@ export function buildDropDraftMessages(
       ],
     },
   ]
+}
+
+function latencyProviderOptions(model: LanguageModel) {
+  return typeof model === 'string' && model.startsWith('google/')
+    ? {
+        google: {
+          thinkingConfig: {
+            thinkingLevel: 'minimal' as const,
+          },
+        },
+      }
+    : undefined
+}
+
+async function withFallback<T>({
+  part,
+  model,
+  fallbackModel,
+  timeoutMs,
+  generate,
+}: {
+  part: 'catalog' | 'theme'
+  model: LanguageModel
+  fallbackModel?: LanguageModel
+  timeoutMs: number
+  generate: (model: LanguageModel, abortSignal: AbortSignal) => Promise<T>
+}) {
+  const startedAt = performance.now()
+
+  try {
+    return {
+      output: await generate(model, AbortSignal.timeout(timeoutMs)),
+      durationMs: Math.round(performance.now() - startedAt),
+      usedFallback: false,
+    }
+  } catch (primaryError) {
+    if (!fallbackModel || fallbackModel === model) throw primaryError
+
+    try {
+      return {
+        output: await generate(
+          fallbackModel,
+          AbortSignal.timeout(timeoutMs),
+        ),
+        durationMs: Math.round(performance.now() - startedAt),
+        usedFallback: true,
+      }
+    } catch (fallbackError) {
+      throw new AggregateError(
+        [primaryError, fallbackError],
+        `${part} generation failed with both models`,
+      )
+    }
+  }
+}
+
+export async function generateDropDraft(
+  images: DraftImage[],
+  options: GenerateDropDraftOptions = {},
+): Promise<{ draft: DropDraft; timing: DraftGenerationTiming }> {
+  const model = options.model ?? process.env.DRAFT_MODEL ?? DEFAULT_DRAFT_MODEL
+  const fallbackModel =
+    options.fallbackModel ??
+    process.env.DRAFT_FALLBACK_MODEL ??
+    DEFAULT_FALLBACK_MODEL
+  const timeoutMs = options.timeoutMs ?? GENERATION_TIMEOUT_MS
+  const startedAt = performance.now()
+
+  const [catalog, storefront] = await Promise.all([
+    withFallback({
+      part: 'catalog',
+      model,
+      fallbackModel,
+      timeoutMs,
+      generate: async (selectedModel, abortSignal) => {
+        const { output } = await generateText({
+          model: selectedModel,
+          system: CATALOG_INSTRUCTIONS,
+          messages: buildMessages(
+            images,
+            `Create listings from all ${images.length} uploaded ${images.length === 1 ? 'image' : 'images'}.`,
+          ),
+          output: Output.object({
+            schema: catalogDraftSchema,
+            name: 'drop_catalog',
+          }),
+          abortSignal,
+          maxRetries: 0,
+          providerOptions: latencyProviderOptions(selectedModel),
+        })
+        return output
+      },
+    }),
+    withFallback({
+      part: 'theme',
+      model,
+      fallbackModel,
+      timeoutMs,
+      generate: async (selectedModel, abortSignal) => {
+        const { output } = await generateText({
+          model: selectedModel,
+          system: THEME_INSTRUCTIONS,
+          messages: buildMessages(images, 'Propose one storefront theme.'),
+          output: Output.object({
+            schema: themeDraftSchema,
+            name: 'storefront_theme',
+          }),
+          abortSignal,
+          maxRetries: 0,
+          providerOptions: latencyProviderOptions(selectedModel),
+        })
+        return output
+      },
+    }),
+  ])
+
+  return {
+    draft: dropDraftSchema.parse({
+      products: catalog.output.products.map((product) => ({
+        ...product,
+        inventoryChoice: null,
+        customizations: [],
+      })),
+      needsInput: catalog.output.needsInput,
+      theme: clampTheme(storefront.output.theme),
+    }),
+    timing: {
+      catalogMs: catalog.durationMs,
+      themeMs: storefront.durationMs,
+      totalMs: Math.round(performance.now() - startedAt),
+      fallbackParts: [
+        ...(catalog.usedFallback ? (['catalog'] as const) : []),
+        ...(storefront.usedFallback ? (['theme'] as const) : []),
+      ],
+    },
+  }
 }

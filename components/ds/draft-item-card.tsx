@@ -38,6 +38,7 @@ export type ProductDraft = {
   stock: string
   imageUrl: string | null
   imageSource: 'source' | 'uploaded' | 'generated' | null
+  sourceImageIndex: number | null
   inventoryChoiceName: string
   variants: ProductVariantDraft[]
   customizations: CustomizationDraft[]
@@ -52,6 +53,7 @@ export function DraftItemCard({
   product,
   canRemove,
   busy,
+  enhancementReady,
   error,
   onChange,
   onRemove,
@@ -61,6 +63,7 @@ export function DraftItemCard({
   product: ProductDraft
   canRemove: boolean
   busy: boolean
+  enhancementReady?: boolean
   error?: string
   onChange: (product: ProductDraft) => void
   onRemove: () => void
@@ -221,7 +224,11 @@ export function DraftItemCard({
             onClick={() => onImprove(product)}
           >
             {busy ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
-            {busy ? 'Working…' : 'Enhance Image'}
+            {busy
+              ? 'Working…'
+              : enhancementReady
+                ? 'Enhance ready'
+                : 'Enhance Image'}
           </Button>
         </div>
 

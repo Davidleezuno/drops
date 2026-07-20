@@ -49,12 +49,6 @@ const fixture: DropDraft = {
       badge: 'Small batch',
     },
   },
-  paletteCandidates: [
-    { l: 0.56, c: 0.13, h: 48 },
-    { l: 0.55, c: 0.12, h: 24 },
-    { l: 0.52, c: 0.1, h: 92 },
-    { l: 0.54, c: 0.11, h: 342 },
-  ],
   needsInput: ['stock', 'window'],
 }
 

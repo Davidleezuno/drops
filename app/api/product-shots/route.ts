@@ -124,7 +124,8 @@ export async function POST(request: Request) {
 
   const name = cleanField(formData.get('name'), 120)
   const variant = cleanField(formData.get('variant'), 120)
-  if (!name) {
+  const previewOnly = mode === 'preview'
+  if (!name && !previewOnly) {
     return NextResponse.json(
       { error: 'Add a product name before improving its photo.' },
       { status: 400 },
@@ -133,12 +134,26 @@ export async function POST(request: Request) {
 
   try {
     const referenceImage = await readReferenceImage(formData)
-    const productDescription = variant ? `${name}, ${variant}` : name
+    if (previewOnly && !referenceImage) {
+      return NextResponse.json(
+        { error: 'Choose a source photo to improve.' },
+        { status: 400 },
+      )
+    }
+
+    const productDescription = name
+      ? variant
+        ? `${name}, ${variant}`
+        : name
+      : 'the primary sellable product or set shown in the reference image'
     const prompt = [
       `Create a polished square ecommerce product photograph for: ${productDescription}.`,
       referenceImage
         ? 'Use the reference image to preserve the exact product identity, packaging, colors, proportions, quantity, and any visible branding.'
         : 'Create an honest, realistic representation of the named product without inventing branding or claims.',
+      previewOnly
+        ? 'If the reference shows several items that form one set, keep the complete set together. Do not select, merge, or invent products that are not shown.'
+        : '',
       'Show one clear hero view, centered and fully in frame, on a warm off-white studio background with soft natural light and a subtle grounded shadow.',
       'Remove hands, people, clutter, price tags, watermarks, frames, and unrelated objects.',
       'Do not add captions, promotional copy, decorative typography, new logos, or extra packaging text.',
@@ -163,6 +178,9 @@ export async function POST(request: Request) {
       providerOptions: {
         google: {
           responseModalities: ['TEXT', 'IMAGE'],
+          thinkingConfig: {
+            thinkingLevel: 'minimal',
+          },
           imageConfig: {
             aspectRatio: '1:1',
             imageSize: '1K',
@@ -182,6 +200,17 @@ export async function POST(request: Request) {
     const mediaType = ALLOWED_MEDIA_TYPES.has(generated.mediaType)
       ? generated.mediaType
       : 'image/png'
+
+    if (previewOnly) {
+      return new Response(generated.uint8Array.slice().buffer, {
+        headers: {
+          'Cache-Control': 'no-store',
+          'Content-Type': mediaType,
+          'X-Product-Shot-Source': 'preview',
+        },
+      })
+    }
+
     const imageUrl = await saveProductShot(generated.uint8Array, mediaType)
 
     return NextResponse.json({ imageUrl, source: 'generated' })

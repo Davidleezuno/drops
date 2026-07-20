@@ -108,12 +108,16 @@ export function clampAccent(accent: Accent): Accent {
   return { ...candidate, l: passingLightness }
 }
 
-function sanitize(value: string) {
-  return value.replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ').replace(/\s+/g, ' ').trim()
+function sanitize(value: string, maxLength: number) {
+  return value
+    .replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, maxLength)
 }
 
-function sanitizeNullable(value: string | null) {
-  return value === null ? null : sanitize(value)
+function sanitizeNullable(value: string | null, maxLength: number) {
+  return value === null ? null : sanitize(value, maxLength)
 }
 
 function clampHero(hero: StorefrontTheme['hero']): StorefrontTheme['hero'] {
@@ -143,8 +147,8 @@ function clampHero(hero: StorefrontTheme['hero']): StorefrontTheme['hero'] {
 }
 
 export function clampTheme(theme: StorefrontTheme): StorefrontTheme {
-  const dropTitle = sanitize(theme.voice.dropTitle)
-  const headline = sanitize(theme.ogCard.headline)
+  const dropTitle = sanitize(theme.voice.dropTitle, 60)
+  const headline = sanitize(theme.ogCard.headline, 48)
 
   return {
     ...theme,
@@ -153,11 +157,11 @@ export function clampTheme(theme: StorefrontTheme): StorefrontTheme {
     voice: {
       ...theme.voice,
       dropTitle: dropTitle || 'Drop',
-      sellerNote: sanitizeNullable(theme.voice.sellerNote),
+      sellerNote: sanitizeNullable(theme.voice.sellerNote, 140),
     },
     ogCard: {
       headline: headline || 'Drop',
-      badge: sanitizeNullable(theme.ogCard.badge),
+      badge: sanitizeNullable(theme.ogCard.badge, 24),
     },
   }
 }

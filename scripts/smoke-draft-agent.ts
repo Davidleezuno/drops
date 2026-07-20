@@ -4,12 +4,8 @@
 import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'
 
-import {
-  buildDropDraftMessages,
-  createDropDraftAgent,
-} from '@/lib/agents/drop-draft-agent'
+import { generateDropDraft } from '@/lib/agents/drop-draft-agent'
 import type { DraftImage } from '@/lib/agents/types'
-import { dropDraftSchema } from '@/lib/drop-builder'
 import { clampTheme } from '@/lib/theme'
 
 const mediaTypes: Record<string, string> = {
@@ -36,28 +32,19 @@ async function main() {
     }),
   )
 
-  const agent = createDropDraftAgent(images)
-  const { output } = await agent.generate({
-    messages: buildDropDraftMessages(images),
-  })
-  const draft = dropDraftSchema.parse({
-    ...output,
-    theme: clampTheme(output.theme),
-    paletteCandidates: output.paletteCandidates.map((accent) =>
-      clampTheme({ ...output.theme, accent }).accent,
-    ),
-  })
-
-  if (
-    !draft.paletteCandidates.some(
-      (candidate) =>
-        JSON.stringify(candidate) === JSON.stringify(draft.theme.accent),
-    )
-  ) {
-    throw new Error('theme.accent is not one of paletteCandidates')
+  const { draft: generatedDraft, timing } = await generateDropDraft(images)
+  const draft = {
+    ...generatedDraft,
+    theme: clampTheme(generatedDraft.theme),
   }
 
   console.log(JSON.stringify(draft, null, 2))
+  console.error(
+    `Generated in ${(timing.totalMs / 1_000).toFixed(1)}s ` +
+      `(catalog ${(timing.catalogMs / 1_000).toFixed(1)}s, ` +
+      `theme ${(timing.themeMs / 1_000).toFixed(1)}s, ` +
+      `fallback: ${timing.fallbackParts.join(', ') || 'none'})`,
+  )
 }
 
 main().catch((error) => {

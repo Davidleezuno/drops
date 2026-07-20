@@ -103,6 +103,27 @@ describe('clampTheme', () => {
       expect(contrastRatio(theme.accent, court)).toBeGreaterThanOrEqual(4.5)
     },
   )
+
+  it('trims generated copy to the persisted schema limits', () => {
+    const theme = clampTheme({
+      ...baseTheme,
+      voice: {
+        ...baseTheme.voice,
+        dropTitle: 'D'.repeat(80),
+        sellerNote: 'S'.repeat(180),
+      },
+      ogCard: {
+        headline: 'H'.repeat(80),
+        badge: 'B'.repeat(40),
+      },
+    })
+
+    expect(storefrontThemeSchema.parse(theme)).toEqual(theme)
+    expect(theme.voice.dropTitle).toHaveLength(60)
+    expect(theme.voice.sellerNote).toHaveLength(140)
+    expect(theme.ogCard.headline).toHaveLength(48)
+    expect(theme.ogCard.badge).toHaveLength(24)
+  })
 })
 
 describe('oklchString', () => {

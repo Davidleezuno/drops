@@ -3,25 +3,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { dropDraftFixture } from '@/lib/fixtures/drop-draft-fixture'
 
 const mocks = vi.hoisted(() => ({
-  createAgent: vi.fn(),
-  generate: vi.fn(),
-  buildMessages: vi.fn(() => [{ role: 'user', content: 'Create a draft.' }]),
+  generateDropDraft: vi.fn(),
 }))
 
 vi.mock('@/lib/agents/drop-draft-agent', () => ({
-  createDropDraftAgent: mocks.createAgent,
-  buildDropDraftMessages: mocks.buildMessages,
+  generateDropDraft: mocks.generateDropDraft,
 }))
 
 import { POST } from './route'
 
 function draftRequest(
   images: File[] = [new File(['image'], 'menu.jpg', { type: 'image/jpeg' })],
-  nudge?: string,
 ) {
   const formData = new FormData()
   for (const image of images) formData.append('images', image)
-  if (nudge) formData.append('nudge', nudge)
   return new Request('http://localhost/api/draft', {
     method: 'POST',
     body: formData,
@@ -31,57 +26,52 @@ function draftRequest(
 describe('POST /api/draft', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.createAgent.mockReturnValue({ generate: mocks.generate })
-    mocks.generate.mockResolvedValue({ output: dropDraftFixture })
+    mocks.generateDropDraft.mockResolvedValue({
+      draft: dropDraftFixture,
+      timing: {
+        catalogMs: 120,
+        themeMs: 150,
+        totalMs: 155,
+        fallbackParts: [],
+      },
+    })
     process.env.DRAFT_FALLBACK_MODEL = 'openai/gpt-5.6-terra'
   })
 
-  it('returns a clamped draft and forwards a valid nudge', async () => {
-    mocks.generate.mockResolvedValueOnce({
-      output: {
+  it('returns a clamped draft with generation timing', async () => {
+    mocks.generateDropDraft.mockResolvedValueOnce({
+      draft: {
         ...dropDraftFixture,
         theme: {
           ...dropDraftFixture.theme,
           accent: { l: 0.75, c: 0.05, h: 90 },
         },
-        paletteCandidates: [
-          { l: 0.75, c: 0.05, h: 90 },
-          ...dropDraftFixture.paletteCandidates.slice(1),
-        ],
+      },
+      timing: {
+        catalogMs: 120,
+        themeMs: 150,
+        totalMs: 155,
+        fallbackParts: ['theme'],
       },
     })
 
-    const response = await POST(draftRequest(undefined, 'bolder'))
+    const response = await POST(draftRequest())
     const body = await response.json()
 
     expect(response.status).toBe(200)
     expect(body.theme.accent.l).toBeLessThan(0.75)
-    expect(body.theme.accent.c).toBeLessThanOrEqual(0.25)
-    expect(mocks.buildMessages).toHaveBeenCalledWith(
-      expect.any(Array),
-      'bolder',
+    expect(response.headers.get('server-timing')).toBe(
+      'catalog;dur=120, theme;dur=150, draft;dur=155',
     )
-    expect(mocks.createAgent).toHaveBeenCalledTimes(1)
+    expect(response.headers.get('x-draft-fallback')).toBe('theme')
+    expect(mocks.generateDropDraft).toHaveBeenCalledWith(expect.any(Array), {
+      fallbackModel: 'openai/gpt-5.6-terra',
+    })
   })
 
-  it('retries once with the configured fallback model', async () => {
-    mocks.generate
-      .mockRejectedValueOnce(new Error('primary failed'))
-      .mockResolvedValueOnce({ output: dropDraftFixture })
-
-    const response = await POST(draftRequest())
-
-    expect(response.status).toBe(200)
-    expect(mocks.createAgent).toHaveBeenNthCalledWith(
-      2,
-      expect.any(Array),
-      { model: 'openai/gpt-5.6-terra' },
-    )
-  })
-
-  it('returns a seller-readable 502 after both models fail', async () => {
+  it('returns a seller-readable 502 after generation fails', async () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    mocks.generate.mockRejectedValue(new Error('model unavailable'))
+    mocks.generateDropDraft.mockRejectedValue(new Error('models unavailable'))
 
     const response = await POST(draftRequest())
 
@@ -90,7 +80,6 @@ describe('POST /api/draft', () => {
       error:
         'We could not read that image. Try a clearer photo or enter the items manually.',
     })
-    expect(mocks.generate).toHaveBeenCalledTimes(2)
     consoleError.mockRestore()
   })
 
@@ -128,6 +117,6 @@ describe('POST /api/draft', () => {
 
     expect(response.status).toBe(400)
     await expect(response.json()).resolves.toEqual({ error })
-    expect(mocks.createAgent).not.toHaveBeenCalled()
+    expect(mocks.generateDropDraft).not.toHaveBeenCalled()
   })
 })

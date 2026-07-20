@@ -18,7 +18,14 @@ import {
   Store,
   X,
 } from 'lucide-react'
-import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react'
+import {
+  DragEvent,
+  FormEvent,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
 
 import { DraftItemCard, type ProductDraft } from '@/components/ds/draft-item-card'
 import { Button } from '@/components/ui/button'
@@ -81,6 +88,10 @@ type SelectedImage = {
   file: File
 }
 
+type PrefetchedEnhancement = {
+  promise: Promise<Blob | null>
+}
+
 function newProduct(product?: {
   name: string
   variant: string | null
@@ -105,6 +116,7 @@ function newProduct(product?: {
     stock: product?.stock === null || !product ? '' : String(product.stock),
     imageUrl: null,
     imageSource: null,
+    sourceImageIndex: product?.sourceImageIndex ?? null,
     inventoryChoiceName: product?.inventoryChoice?.name ?? '',
     variants:
       product?.inventoryChoice?.values.map((variant) => ({
@@ -212,12 +224,6 @@ function CopyButton({
   )
 }
 
-const EXTRACTION_STAGES = [
-  'Reading your photos',
-  'Finding items & prices',
-  'Styling your storefront',
-] as const
-
 const NEEDS_INPUT_LABELS: Record<DropDraft['needsInput'][number], string> = {
   price: 'prices',
   stock: 'stock counts',
@@ -285,15 +291,19 @@ function ReviewSection({
   )
 }
 
-function ReviewLoading() {
-  const [stage, setStage] = useState(0)
+function ReviewLoading({
+  imageCount,
+  onContinueManually,
+}: {
+  imageCount: number
+  onContinueManually: () => void
+}) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
 
   useEffect(() => {
-    // No streaming progress from the model — walk the stages on a timer so the
-    // wait reads as motion, and hold on the last stage until the data lands.
     const timer = window.setInterval(() => {
-      setStage((current) => Math.min(current + 1, EXTRACTION_STAGES.length - 1))
-    }, 2200)
+      setElapsedSeconds((current) => current + 1)
+    }, 1000)
     return () => window.clearInterval(timer)
   }, [])
 
@@ -304,47 +314,36 @@ function ReviewLoading() {
           Building your listings…
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
-          Reading each photo and drafting a storefront. This usually takes a few
-          seconds.
+          Gemini is reading {imageCount} {imageCount === 1 ? 'photo' : 'photos'}
+          {' '}while we save them. This usually takes 10–25 seconds.
         </p>
       </header>
 
-      <ol className="mt-8 space-y-3" aria-label="Progress">
-        {EXTRACTION_STAGES.map((label, index) => {
-          const done = index < stage
-          const active = index === stage
-          return (
-            <li key={label} className="flex items-center gap-3">
-              <span
-                className={cn(
-                  'flex size-6 items-center justify-center rounded-full border transition-colors',
-                  done && 'border-live bg-live-soft text-live',
-                  active && 'border-flame bg-flame-soft text-flame',
-                  !done && !active && 'border-border text-muted-foreground',
-                )}
-              >
-                {done ? (
-                  <Check className="size-3.5" strokeWidth={3} />
-                ) : active ? (
-                  <LoaderCircle className="size-3.5 animate-spin" />
-                ) : (
-                  <span className="size-1.5 rounded-full bg-current opacity-40" />
-                )}
-              </span>
-              <span
-                className={cn(
-                  'text-sm transition-colors',
-                  active
-                    ? 'font-medium text-foreground'
-                    : 'text-muted-foreground',
-                )}
-              >
-                {label}
-              </span>
-            </li>
-          )
-        })}
-      </ol>
+      <div className="mt-8 flex items-center gap-3" aria-live="polite">
+        <span className="flex size-7 items-center justify-center rounded-full border border-flame bg-flame-soft text-flame">
+          <LoaderCircle className="size-4 animate-spin" />
+        </span>
+        <span className="text-sm font-medium">
+          Drafting listings · {elapsedSeconds}s
+        </span>
+      </div>
+
+      {elapsedSeconds >= 12 && (
+        <div className="mt-5 rounded-xl border border-border bg-card p-4">
+          <p className="text-sm text-muted-foreground">
+            Taking longer than expected? You can start entering items yourself.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3"
+            onClick={onContinueManually}
+          >
+            Continue manually
+          </Button>
+        </div>
+      )}
 
       <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {[0, 1, 2, 3].map((index) => (
@@ -398,6 +397,17 @@ export function DropBuilder() {
   const [theme, setTheme] = useState<StorefrontTheme | null>(null)
   const [needsInput, setNeedsInput] = useState<DropDraft['needsInput']>([])
   const [choiceNudgeDismissed, setChoiceNudgeDismissed] = useState(false)
+  const draftAbortRef = useRef<AbortController | null>(null)
+  const enhancementAbortRef = useRef<AbortController | null>(null)
+  const prefetchedEnhancementsRef = useRef(
+    new Map<number, PrefetchedEnhancement>(),
+  )
+  const acceptedEnhancementUrlsRef = useRef(
+    new Map<number, Promise<string>>(),
+  )
+  const [readyEnhancementIndexes, setReadyEnhancementIndexes] = useState<
+    number[]
+  >([])
 
   const sellerSlug = slugify(sellerName, 'your-name')
   const cleanDropSlug = slugify(dropSlug, 'drops')
@@ -416,6 +426,14 @@ export function DropBuilder() {
       imagePreviews.forEach((image) => URL.revokeObjectURL(image.url))
     },
     [imagePreviews],
+  )
+
+  useEffect(
+    () => () => {
+      draftAbortRef.current?.abort()
+      enhancementAbortRef.current?.abort()
+    },
+    [],
   )
 
   function updateProduct(updated: ProductDraft) {
@@ -536,7 +554,11 @@ export function DropBuilder() {
     })
   }
 
-  async function saveUploadedProductShot(image: Blob, filename: string) {
+  async function saveUploadedProductShot(
+    image: Blob,
+    filename: string,
+    signal?: AbortSignal,
+  ) {
     const formData = new FormData()
     formData.set('mode', 'upload')
     formData.set('image', image, filename)
@@ -544,6 +566,7 @@ export function DropBuilder() {
     const response = await fetch('/api/product-shots', {
       method: 'POST',
       body: formData,
+      signal,
     })
     const result = (await response.json()) as {
       imageUrl?: string
@@ -554,6 +577,87 @@ export function DropBuilder() {
     }
 
     return result.imageUrl
+  }
+
+  async function requestEnhancedProductShot(
+    image: Blob,
+    filename: string,
+    signal: AbortSignal,
+  ) {
+    const formData = new FormData()
+    formData.set('mode', 'preview')
+    formData.set('image', image, filename)
+
+    const response = await fetch('/api/product-shots', {
+      method: 'POST',
+      body: formData,
+      signal,
+    })
+    const mediaType = response.headers.get('content-type')?.split(';')[0]
+
+    if (
+      !response.ok ||
+      !mediaType ||
+      !['image/jpeg', 'image/png', 'image/webp'].includes(mediaType)
+    ) {
+      throw new Error('That photo could not be prepared.')
+    }
+
+    return response.blob()
+  }
+
+  function prefetchProductShots(
+    images: Blob[],
+    fileNames: string[],
+    controller: AbortController,
+  ) {
+    prefetchedEnhancementsRef.current.clear()
+    acceptedEnhancementUrlsRef.current.clear()
+    setReadyEnhancementIndexes([])
+
+    const tasks = images.map((image, sourceImageIndex) => {
+      const promise = requestEnhancedProductShot(
+        image,
+        fileNames[sourceImageIndex],
+        controller.signal,
+      )
+        .then((enhancedImage) => {
+          setReadyEnhancementIndexes((current) =>
+            current.includes(sourceImageIndex)
+              ? current
+              : [...current, sourceImageIndex],
+          )
+          return enhancedImage
+        })
+        .catch(() => null)
+
+      prefetchedEnhancementsRef.current.set(sourceImageIndex, { promise })
+      return promise
+    })
+
+    void Promise.all(tasks).finally(() => {
+      if (enhancementAbortRef.current === controller) {
+        enhancementAbortRef.current = null
+      }
+    })
+  }
+
+  function persistPrefetchedEnhancement(
+    sourceImageIndex: number,
+    image: Blob,
+  ) {
+    const existing = acceptedEnhancementUrlsRef.current.get(sourceImageIndex)
+    if (existing) return existing
+
+    const upload = saveUploadedProductShot(
+      image,
+      `enhanced-${sourceImageIndex + 1}.png`,
+    ).catch((error) => {
+      acceptedEnhancementUrlsRef.current.delete(sourceImageIndex)
+      throw error
+    })
+    acceptedEnhancementUrlsRef.current.set(sourceImageIndex, upload)
+    return upload
   }
 
   async function uploadProductShot(product: ProductDraft, image: File) {
@@ -579,6 +683,42 @@ export function DropBuilder() {
     setProductShotError(product.id)
 
     try {
+      const sourceImageIndex = product.sourceImageIndex
+      const prefetched =
+        (product.imageSource === 'source' || product.imageSource === null) &&
+        sourceImageIndex !== null
+          ? prefetchedEnhancementsRef.current.get(sourceImageIndex)
+          : undefined
+      const prefetchedImage = await prefetched?.promise
+
+      if (prefetchedImage && sourceImageIndex !== null) {
+        const previousImageUrl = product.imageUrl
+        const previousImageSource = product.imageSource
+        const previewUrl = URL.createObjectURL(prefetchedImage)
+        updateProductImage(product.id, previewUrl, 'generated')
+
+        try {
+          const imageUrl = await persistPrefetchedEnhancement(
+            sourceImageIndex,
+            prefetchedImage,
+          )
+          updateProductImage(product.id, imageUrl, 'generated')
+        } catch (error) {
+          if (previousImageUrl && previousImageSource) {
+            updateProductImage(
+              product.id,
+              previousImageUrl,
+              previousImageSource,
+            )
+          }
+          throw error
+        } finally {
+          URL.revokeObjectURL(previewUrl)
+        }
+
+        return
+      }
+
       const formData = new FormData()
       formData.set('name', product.name)
       formData.set('variant', product.variant)
@@ -645,6 +785,7 @@ export function DropBuilder() {
   async function fetchDraft(
     images: Blob[],
     fileNames: string[],
+    signal?: AbortSignal,
   ): Promise<DropDraft> {
     const formData = new FormData()
     images.forEach((image, index) => {
@@ -653,6 +794,7 @@ export function DropBuilder() {
     const response = await fetch('/api/draft', {
       method: 'POST',
       body: formData,
+      signal,
     })
     const result = (await response.json()) as DropDraft & { error?: string }
 
@@ -671,11 +813,16 @@ export function DropBuilder() {
 
     setExtracting(true)
     setError(null)
-    // Take the seller to the destination right away — the review screen shows
-    // skeletons and a staged progress list while the model works, so the wait
-    // never reads as a frozen button.
+    // Take the seller to the destination right away so elapsed time and the
+    // manual-entry escape hatch remain visible while the model works.
     setProducts([])
     setPhase('review')
+    draftAbortRef.current?.abort()
+    enhancementAbortRef.current?.abort()
+    const controller = new AbortController()
+    const enhancementController = new AbortController()
+    draftAbortRef.current = controller
+    enhancementAbortRef.current = enhancementController
 
     try {
       const maxBytesPerImage = Math.floor(
@@ -689,13 +836,21 @@ export function DropBuilder() {
       const fileNames = selectedImages.map(
         ({ file }) => file.name || `menu.jpg`,
       )
-      const result = await fetchDraft(images, fileNames)
-
-      const savedImages = await Promise.allSettled(
+      prefetchProductShots(images, fileNames, enhancementController)
+      const draftPromise = fetchDraft(images, fileNames, controller.signal)
+      const savedImagesPromise = Promise.allSettled(
         images.map((image, index) =>
-          saveUploadedProductShot(image, fileNames[index]),
+          saveUploadedProductShot(
+            image,
+            fileNames[index],
+            controller.signal,
+          ),
         ),
       )
+      const [result, savedImages] = await Promise.all([
+        draftPromise,
+        savedImagesPromise,
+      ])
       const imageUrls = savedImages.map((saved) =>
         saved.status === 'fulfilled' ? saved.value : null,
       )
@@ -723,6 +878,8 @@ export function DropBuilder() {
       setTheme(result.theme)
       setNeedsInput(result.needsInput)
     } catch (caught) {
+      if (caught instanceof DOMException && caught.name === 'AbortError') return
+      enhancementController.abort()
       // Send the seller back to their photos with the reason — they never get
       // stranded on an empty review screen.
       setPhase('upload')
@@ -732,6 +889,7 @@ export function DropBuilder() {
           : 'We could not read those photos. Try again, or add items by hand.',
       )
     } finally {
+      if (draftAbortRef.current === controller) draftAbortRef.current = null
       setExtracting(false)
     }
   }
@@ -951,7 +1109,25 @@ export function DropBuilder() {
   }
 
   if (phase === 'review') {
-    if (extracting && !products.length) return <ReviewLoading />
+    if (extracting && !products.length) {
+      return (
+        <ReviewLoading
+          imageCount={selectedImages.length}
+          onContinueManually={() => {
+            draftAbortRef.current?.abort()
+            enhancementAbortRef.current?.abort()
+            prefetchedEnhancementsRef.current.clear()
+            acceptedEnhancementUrlsRef.current.clear()
+            setReadyEnhancementIndexes([])
+            setProducts([newProduct()])
+            setTheme(null)
+            setNeedsInput(['price', 'stock', 'window', 'deliveryFee', 'pickup'])
+            setError(null)
+            setExtracting(false)
+          }}
+        />
+      )
+    }
 
     const closesAt = new Date(windowEndsAt)
     const closesLabel =
@@ -1085,6 +1261,14 @@ export function DropBuilder() {
                     product={product}
                     canRemove={products.length > 1}
                     busy={busyProductIds.includes(product.id)}
+                    enhancementReady={
+                      (product.imageSource === 'source' ||
+                        product.imageSource === null) &&
+                      product.sourceImageIndex !== null &&
+                      readyEnhancementIndexes.includes(
+                        product.sourceImageIndex,
+                      )
+                    }
                     error={productShotErrors[product.id]}
                     onChange={updateProduct}
                     onRemove={() =>
