@@ -21,7 +21,6 @@ import {
 import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react'
 
 import { DraftItemCard, type ProductDraft } from '@/components/ds/draft-item-card'
-import { StorefrontCard } from '@/components/ds/storefront-card'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -40,8 +39,6 @@ import { cn } from '@/lib/utils'
 type Fulfilment = 'pickup' | 'delivery' | 'both'
 type Phase = 'upload' | 'review' | 'success'
 type WindowPreset = 'today' | 'week' | 'month'
-type ShuffleNudge = 'bolder' | 'calmer'
-
 type PublishedDrop = {
   buyerUrl: string
   manageUrl: string
@@ -399,14 +396,7 @@ export function DropBuilder() {
     Record<string, string>
   >({})
   const [theme, setTheme] = useState<StorefrontTheme | null>(null)
-  const [paletteCandidates, setPaletteCandidates] = useState<
-    StorefrontTheme['accent'][]
-  >([])
   const [needsInput, setNeedsInput] = useState<DropDraft['needsInput']>([])
-  const [shuffling, setShuffling] = useState(false)
-  const [originalImages, setOriginalImages] = useState<
-    { blob: Blob; name: string }[]
-  >([])
   const [choiceNudgeDismissed, setChoiceNudgeDismissed] = useState(false)
 
   const sellerSlug = slugify(sellerName, 'your-name')
@@ -655,14 +645,11 @@ export function DropBuilder() {
   async function fetchDraft(
     images: Blob[],
     fileNames: string[],
-    nudge?: ShuffleNudge,
   ): Promise<DropDraft> {
     const formData = new FormData()
     images.forEach((image, index) => {
       formData.append('images', image, fileNames[index] ?? `menu-${index + 1}.jpg`)
     })
-    if (nudge) formData.set('nudge', nudge)
-
     const response = await fetch('/api/draft', {
       method: 'POST',
       body: formData,
@@ -734,9 +721,7 @@ export function DropBuilder() {
         ),
       )
       setTheme(result.theme)
-      setPaletteCandidates(result.paletteCandidates)
       setNeedsInput(result.needsInput)
-      setOriginalImages(images.map((blob, index) => ({ blob, name: fileNames[index] })))
     } catch (caught) {
       // Send the seller back to their photos with the reason — they never get
       // stranded on an empty review screen.
@@ -748,30 +733,6 @@ export function DropBuilder() {
       )
     } finally {
       setExtracting(false)
-    }
-  }
-
-  async function shuffle(nudge: ShuffleNudge) {
-    if (!originalImages.length) return
-    setShuffling(true)
-    setError(null)
-    try {
-      const result = await fetchDraft(
-        originalImages.map(({ blob }) => blob),
-        originalImages.map(({ name }) => name),
-        nudge,
-      )
-      // Shuffle only swaps the look — never touch the seller's product edits.
-      setTheme(result.theme)
-      setPaletteCandidates(result.paletteCandidates)
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : 'Shuffle came back empty. Try again.',
-      )
-    } finally {
-      setShuffling(false)
     }
   }
 
@@ -1000,10 +961,8 @@ export function DropBuilder() {
           ? 'Pick a closing time'
           : `Closes ${closingTime.format(closesAt)}`
 
-    const hasStorefront = Boolean(theme && paletteCandidates.length > 0)
     let stepCounter = 0
     const productsStep = ++stepCounter
-    const storefrontStep = hasStorefront ? ++stepCounter : 0
     const windowStep = ++stepCounter
     const fulfilmentStep = ++stepCounter
 
@@ -1119,7 +1078,7 @@ export function DropBuilder() {
               </div>
             )}
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-4">
                 {products.map((product) => (
                   <DraftItemCard
                     key={product.id}
@@ -1151,26 +1110,6 @@ export function DropBuilder() {
               </Button>
             </div>
           </ReviewSection>
-
-          {theme && paletteCandidates.length > 0 && (
-            <ReviewSection
-              step={storefrontStep}
-              title="Storefront"
-              subtitle="Your buyer's first impression — tune the colour and layout."
-              complete
-            >
-              <StorefrontCard
-                theme={theme}
-                paletteCandidates={paletteCandidates}
-                products={products}
-                sellerName={sellerName}
-                dropSlug={cleanDropSlug}
-                shuffling={shuffling}
-                onChangeTheme={setTheme}
-                onShuffle={shuffle}
-              />
-            </ReviewSection>
-          )}
 
           <ReviewSection
             step={windowStep}

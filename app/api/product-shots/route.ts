@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { experimental_generateImage as generateImage } from 'ai'
+import { generateText } from 'ai'
 import { NextResponse } from 'next/server'
 
 import { createServiceClient } from '@/lib/db'
@@ -9,8 +9,9 @@ export const maxDuration = 60
 export const runtime = 'nodejs'
 
 const BUCKET = 'product-shots'
-const DEFAULT_MODEL = 'openai/gpt-image-2'
+const DEFAULT_MODEL = 'google/gemini-3.1-flash-image'
 const MAX_IMAGE_BYTES = 4 * 1024 * 1024
+const IMAGE_GENERATION_TIMEOUT_MS = 45_000
 const ALLOWED_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 
 function storageExtension(mediaType: string) {
@@ -144,21 +145,40 @@ export async function POST(request: Request) {
       'The result should feel like a premium but truthful seller storefront photo, not an advertisement mockup.',
     ].join(' ')
 
-    const result = await generateImage({
-      model: process.env.PRODUCT_IMAGE_MODEL || DEFAULT_MODEL,
+    const result = await generateText({
+      model: DEFAULT_MODEL,
       prompt: referenceImage
-        ? { images: [referenceImage], text: prompt }
+        ? [
+            {
+              role: 'user',
+              content: [
+                { type: 'image', image: referenceImage },
+                { type: 'text', text: prompt },
+              ],
+            },
+          ]
         : prompt,
-      n: 1,
-      size: '1024x1024',
+      maxRetries: 0,
+      abortSignal: AbortSignal.timeout(IMAGE_GENERATION_TIMEOUT_MS),
       providerOptions: {
+        google: {
+          responseModalities: ['TEXT', 'IMAGE'],
+          imageConfig: {
+            aspectRatio: '1:1',
+            imageSize: '1K',
+          },
+        },
         gateway: {
           tags: ['feature:product-shot'],
         },
       },
     })
 
-    const generated = result.image
+    const generated = result.files.find((file) =>
+      file.mediaType.startsWith('image/'),
+    )
+    if (!generated) throw new Error('The image model returned no image.')
+
     const mediaType = ALLOWED_MEDIA_TYPES.has(generated.mediaType)
       ? generated.mediaType
       : 'image/png'

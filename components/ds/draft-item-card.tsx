@@ -136,13 +136,13 @@ export function DraftItemCard({
   }
 
   return (
-    <article className="animate-rise overflow-hidden rounded-2xl border border-border bg-card">
+    <article className="animate-rise overflow-hidden rounded-2xl border border-border bg-card sm:grid sm:grid-cols-[minmax(220px,32%)_1fr]">
       {/* The photo only earns full height once it exists; an empty slot stays a
           thin prompt so the seller can keep scrolling. */}
       <div
         className={cn(
-          'relative w-full overflow-hidden bg-muted',
-          product.imageUrl ? 'aspect-[4/3]' : 'h-20',
+          'relative w-full overflow-hidden bg-muted sm:min-h-80 sm:h-auto',
+          product.imageUrl ? 'aspect-[4/3] sm:aspect-auto' : 'h-20',
         )}
       >
         {product.imageUrl ? (
@@ -151,7 +151,7 @@ export function DraftItemCard({
             alt={`${product.name || 'Item'} photo`}
             fill
             className="object-cover"
-            sizes="(max-width: 448px) 100vw, 448px"
+            sizes="(max-width: 768px) 100vw, 280px"
           />
         ) : (
           <div className="flex size-full items-center justify-center gap-2 text-muted-foreground">
@@ -185,55 +185,56 @@ export function DraftItemCard({
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 border-b border-border p-3">
-        <label
-          className={cn(
-            buttonVariants({ variant: 'outline', size: 'sm' }),
-            'cursor-pointer',
-            busy && 'pointer-events-none opacity-50',
-          )}
-        >
-          <ImagePlus />
-          {product.imageUrl ? 'Replace' : 'Add photo'}
-          <input
-            className="sr-only"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            disabled={busy}
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) onUpload(product, file)
-              event.currentTarget.value = ''
-            }}
-          />
-        </label>
-        <Button
-          type="button"
-          size="sm"
-          variant="secondary"
-          disabled={busy || !product.name.trim()}
-          title={
-            product.name.trim()
-              ? undefined
-              : 'Name the item first so AI knows what to shoot'
-          }
-          onClick={() => onImprove(product)}
-        >
-          {busy ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
-          {busy ? 'Working…' : 'Enhance Image'}
-        </Button>
-      </div>
+      <div className="min-w-0">
+        <div className="grid grid-cols-2 gap-2 border-b border-border p-3">
+          <label
+            className={cn(
+              buttonVariants({ variant: 'outline', size: 'sm' }),
+              'cursor-pointer',
+              busy && 'pointer-events-none opacity-50',
+            )}
+          >
+            <ImagePlus />
+            {product.imageUrl ? 'Replace' : 'Add photo'}
+            <input
+              className="sr-only"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={busy}
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (file) onUpload(product, file)
+                event.currentTarget.value = ''
+              }}
+            />
+          </label>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            disabled={busy || !product.name.trim()}
+            title={
+              product.name.trim()
+                ? undefined
+                : 'Name the item first so AI knows what to shoot'
+            }
+            onClick={() => onImprove(product)}
+          >
+            {busy ? <LoaderCircle className="animate-spin" /> : <Sparkles />}
+            {busy ? 'Working…' : 'Enhance Image'}
+          </Button>
+        </div>
 
-      {error && (
-        <p
-          className="border-b border-border px-3 pb-3 text-xs leading-relaxed text-destructive"
-          role="alert"
-        >
-          {error}
-        </p>
-      )}
+        {error && (
+          <p
+            className="border-b border-border px-3 pb-3 text-xs leading-relaxed text-destructive"
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
 
-      <div className="space-y-3 p-4">
+        <div className="space-y-3 p-4">
         <div className="space-y-1.5">
           <Label htmlFor={fieldId('name')}>Item</Label>
           <Input
@@ -549,6 +550,7 @@ export function DraftItemCard({
               </section>
             </div>
           )}
+        </div>
         </div>
       </div>
     </article>
