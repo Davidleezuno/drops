@@ -154,9 +154,9 @@ export function StorefrontCard({
       aria-label="Storefront preview"
     >
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-display text-xl font-semibold">Storefront</h2>
+        <p className="text-sm font-medium">Live preview</p>
         <p className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
-          Preview
+          Buyer view
         </p>
       </div>
 
