@@ -27,6 +27,8 @@ export function BuyFlow({
   fulfilment,
   deliveryFee,
   pickupNote,
+  initialOpen = false,
+  onClose,
 }: {
   productId: string
   productName: string
@@ -36,8 +38,10 @@ export function BuyFlow({
   fulfilment: Fulfilment | 'both'
   deliveryFee: number
   pickupNote: string | null
+  initialOpen?: boolean
+  onClose?: () => void
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(initialOpen)
   const [quantity, setQuantity] = useState(1)
   const [selectedFulfilment, setSelectedFulfilment] = useState<Fulfilment>(
     fulfilment === 'delivery' ? 'delivery' : 'pickup',
@@ -252,6 +256,7 @@ export function BuyFlow({
         onClick={() => {
           setOpen(false)
           setError(null)
+          onClose?.()
         }}
         disabled={submitting}
       >

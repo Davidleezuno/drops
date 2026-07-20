@@ -8,6 +8,7 @@ import {
   socialTopic,
   type ReactionEmoji,
 } from '@/lib/social-events'
+import { presenceKey } from '@/lib/world/names'
 
 export type Announcement =
   | {
@@ -31,19 +32,7 @@ type SocialEventPayload = {
   qty?: unknown
 }
 
-// Anonymous per-tab presence key: no cookies, no PII.
-function presenceKey() {
-  const storageKey = 'drops-social-session'
-  try {
-    const existing = window.sessionStorage.getItem(storageKey)
-    if (existing) return existing
-    const created = crypto.randomUUID()
-    window.sessionStorage.setItem(storageKey, created)
-    return created
-  } catch {
-    return crypto.randomUUID()
-  }
-}
+export type ReactionEvent = { emoji: ReactionEmoji; key?: string }
 
 /**
  * The drop page's social nervous system (future-ideas §2): presence-backed
@@ -58,6 +47,9 @@ export function useDropSocial(
 ) {
   const [watching, setWatching] = useState(0)
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
+  const [sessionKey] = useState<string | null>(() =>
+    typeof window === 'undefined' ? null : presenceKey(),
+  )
 
   const channelRef = useRef<RealtimeChannel | null>(null)
   const recentEventsRef = useRef<{ paid: boolean; at: number }[]>([])
@@ -65,7 +57,9 @@ export function useDropSocial(
   const dismissTimerRef = useRef<number | undefined>(undefined)
   const lastReactAtRef = useRef(0)
   const reactionListenersRef = useRef(new Set<(emoji: ReactionEmoji) => void>())
-
+  const reactionEventListenersRef = useRef(
+    new Set<(event: ReactionEvent) => void>(),
+  )
   const showAnnouncement = useCallback(
     (kind: 'claim' | 'paid', payload: SocialEventPayload | undefined) => {
       const firstName =
@@ -110,12 +104,16 @@ export function useDropSocial(
   )
 
   useEffect(() => {
+    if (present && !sessionKey) return
+
     let channel: RealtimeChannel | undefined
 
     try {
       channel = supabase.channel(
         socialTopic(dropId),
-        present ? { config: { presence: { key: presenceKey() } } } : undefined,
+        present && sessionKey
+          ? { config: { presence: { key: sessionKey } } }
+          : undefined,
       )
 
       channel
@@ -129,9 +127,18 @@ export function useDropSocial(
           showAnnouncement('paid', payload as SocialEventPayload),
         )
         .on('broadcast', { event: 'react' }, ({ payload }) => {
-          const emoji = (payload as { emoji?: unknown } | undefined)?.emoji
+          const reaction = payload as
+            | { emoji?: unknown; key?: unknown }
+            | undefined
+          const emoji = reaction?.emoji
           if (!isReactionEmoji(emoji)) return
           reactionListenersRef.current.forEach((listener) => listener(emoji))
+          reactionEventListenersRef.current.forEach((listener) =>
+            listener({
+              emoji,
+              key: typeof reaction?.key === 'string' ? reaction.key : undefined,
+            }),
+          )
         })
         .subscribe((status) => {
           if (status === 'SUBSCRIBED' && present) {
@@ -151,7 +158,7 @@ export function useDropSocial(
       window.clearTimeout(dismissTimerRef.current)
       if (channel) void supabase.removeChannel(channel)
     }
-  }, [supabase, dropId, present, showAnnouncement])
+  }, [supabase, dropId, present, sessionKey, showAnnouncement])
 
   const react = useCallback((emoji: ReactionEmoji) => {
     const now = Date.now()
@@ -161,12 +168,20 @@ export function useDropSocial(
     // Broadcast doesn't echo to self — mirror locally so your own reaction
     // floats even when nobody else is in the room.
     reactionListenersRef.current.forEach((listener) => listener(emoji))
+    reactionEventListenersRef.current.forEach((listener) =>
+      listener({ emoji, key: sessionKey ?? undefined }),
+    )
     void channelRef.current?.send({
       type: 'broadcast',
       event: 'react',
-      payload: { type: 'react', emoji, at: new Date().toISOString() },
+      payload: {
+        type: 'react',
+        emoji,
+        at: new Date().toISOString(),
+        key: sessionKey ?? undefined,
+      },
     })
-  }, [])
+  }, [sessionKey])
 
   const subscribeToReactions = useCallback(
     (listener: (emoji: ReactionEmoji) => void) => {
@@ -178,5 +193,22 @@ export function useDropSocial(
     [],
   )
 
-  return { watching, announcement, react, subscribeToReactions }
+  const subscribeToReactionEvents = useCallback(
+    (listener: (event: ReactionEvent) => void) => {
+      reactionEventListenersRef.current.add(listener)
+      return () => {
+        reactionEventListenersRef.current.delete(listener)
+      }
+    },
+    [],
+  )
+
+  return {
+    watching,
+    announcement,
+    presenceKey: sessionKey,
+    react,
+    subscribeToReactions,
+    subscribeToReactionEvents,
+  }
 }

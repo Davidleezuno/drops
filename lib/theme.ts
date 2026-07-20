@@ -53,6 +53,24 @@ function oklchToLinearSrgb({ l, c, h }: Accent): Rgb {
   }
 }
 
+function linearToSrgb(value: number) {
+  return value <= 0.0031308
+    ? value * 12.92
+    : 1.055 * value ** (1 / 2.4) - 0.055
+}
+
+/** Three.js does not consistently parse CSS oklch(), so world materials use
+ * the same accent converted deterministically to an sRGB hex color. */
+export function oklchHex(accent: Accent) {
+  const linear = oklchToLinearSrgb(accent)
+  const channel = (value: number) =>
+    Math.round(clamp(linearToSrgb(value), 0, 1) * 255)
+      .toString(16)
+      .padStart(2, '0')
+
+  return `#${channel(linear.r)}${channel(linear.g)}${channel(linear.b)}`
+}
+
 function relativeLuminance(accent: Accent) {
   const { r, g, b } = oklchToLinearSrgb(accent)
   return 0.2126 * r + 0.7152 * g + 0.0722 * b

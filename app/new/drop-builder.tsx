@@ -13,6 +13,7 @@ import {
   Plus,
   Share2,
   Sparkles,
+  Store,
   X,
 } from 'lucide-react'
 import { DragEvent, FormEvent, useEffect, useMemo, useState } from 'react'
@@ -726,7 +727,8 @@ export function DropBuilder() {
               <Link href={`/${published.sellerSlug}/${published.dropSlug}`} />
             }
           >
-            See what buyers see
+            <Store />
+            Walk your store
             <ArrowRight />
           </Button>
           <Button
@@ -1004,7 +1006,7 @@ export function DropBuilder() {
           )}
         </section>
 
-        <div className="sticky bottom-0 -mx-5 -mb-16 mt-9 border-t border-border bg-background/85 px-5 pt-3 pb-6 backdrop-blur">
+        <div className="mt-9 border-t border-border pt-4">
           {error && (
             <p className="mb-3 text-sm text-destructive" role="alert">
               {error}

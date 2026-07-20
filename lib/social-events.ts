@@ -15,7 +15,7 @@ export const REACTION_EMOJI: Record<ReactionEmoji, string> = {
 export type SocialEvent =
   | { type: 'claim'; firstName: string; productName: string; qty: number; at: string }
   | { type: 'paid'; firstName: string; productName: string; qty: number; at: string }
-  | { type: 'react'; emoji: ReactionEmoji; at: string }
+  | { type: 'react'; emoji: ReactionEmoji; at: string; key?: string }
 
 /** One social channel per drop, a sibling of the products channel. */
 export function socialTopic(dropId: string) {

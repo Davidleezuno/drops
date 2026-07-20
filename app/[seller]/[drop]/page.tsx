@@ -6,6 +6,7 @@ import { dropWindowClosed } from '@/lib/drop-state'
 import { storefrontThemeSchema } from '@/lib/drop-builder'
 import { storefrontScopeVars } from '@/lib/theme'
 import type { Product, StorefrontTheme } from '@/lib/types'
+import { buildSceneConfig } from '@/lib/world/scene-config'
 
 import { DropStorefront, type StorefrontDrop } from './drop-storefront'
 
@@ -49,12 +50,14 @@ export default async function DropPage({
     .returns<Product[]>()
 
   const initialEnded = dropWindowClosed(drop)
+  const sceneConfig = buildSceneConfig(products ?? [], theme, drop.seller_name)
 
   const storefront = (
     <DropStorefront
       drop={themedDrop}
       initialProducts={products ?? []}
       initialEnded={initialEnded}
+      sceneConfig={sceneConfig}
     />
   )
 

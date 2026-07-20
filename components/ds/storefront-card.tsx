@@ -5,7 +5,6 @@ import { LoaderCircle, Shuffle } from 'lucide-react'
 import { ArchetypeLayout } from '@/components/ds/archetypes'
 import { DropHeader } from '@/components/ds/drop-header'
 import { Button, buttonVariants } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { StorefrontTheme } from '@/lib/drop-builder'
 import { slugify } from '@/lib/format'
@@ -108,15 +107,6 @@ export function StorefrontCard({
   }
   function setArchetype(archetype: StorefrontTheme['archetype']) {
     onChangeTheme({ ...theme, archetype })
-  }
-  function setDropTitle(dropTitle: string) {
-    onChangeTheme({ ...theme, voice: { ...theme.voice, dropTitle } })
-  }
-  function setSellerNote(sellerNote: string) {
-    onChangeTheme({
-      ...theme,
-      voice: { ...theme.voice, sellerNote: sellerNote || null },
-    })
   }
 
   return (
@@ -232,32 +222,6 @@ export function StorefrontCard({
         </div>
       </div>
 
-      {/* Voice */}
-      <div className="mt-4 space-y-3">
-        <div className="space-y-1.5">
-          <Label htmlFor="theme-drop-title">Drop title</Label>
-          <Input
-            id="theme-drop-title"
-            value={theme.voice.dropTitle}
-            maxLength={60}
-            placeholder="e.g. Tonight's kitchen bake"
-            onChange={(event) => setDropTitle(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="theme-seller-note">
-            Seller note{' '}
-            <span className="text-muted-foreground">(optional)</span>
-          </Label>
-          <Input
-            id="theme-seller-note"
-            value={theme.voice.sellerNote ?? ''}
-            maxLength={140}
-            placeholder="One human line"
-            onChange={(event) => setSellerNote(event.target.value)}
-          />
-        </div>
-      </div>
     </section>
   )
 }

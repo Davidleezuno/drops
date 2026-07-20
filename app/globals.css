@@ -218,6 +218,40 @@
   }
 }
 
+@keyframes world-reaction-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.7);
+  }
+  15% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-36px) scale(1);
+  }
+}
+
+@keyframes world-live-dot {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 0 4px rgb(62 141 97 / 14%);
+  }
+}
+
+.world-reaction-pop {
+  animation: world-reaction-pop 1.9s ease-out forwards;
+}
+
+.world-live-dot {
+  animation: world-live-dot 2s ease-in-out infinite;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
