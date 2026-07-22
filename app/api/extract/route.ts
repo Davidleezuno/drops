@@ -39,7 +39,7 @@ export async function POST(request: Request) {
           'Unique products, visible inventory choices, shared-stock customizations, commerce facts when shown, and the source image index.',
       }),
       system:
-        'You turn seller photos and menus into editable commerce drafts. Treat every supplied image as part of one set. Create one product per distinct item, remove obvious duplicates, and keep names concise. Return null for prices and stock that are not visibly stated. Group visibly stated separately stocked choices such as sizes under inventoryChoice. Put preparation preferences such as chilli/no chilli under customizations because they share product stock. Never invent option values, products, prices, or stock. For sourceImageIndex choose the clearest image where the product appears.',
+        'You turn seller photos and menus into editable commerce drafts. Treat every supplied image as part of one set. Create one product per distinct item, remove obvious duplicates, and keep names concise. Return null for prices and stock that are not visibly stated. Group visibly stated separately stocked choices such as sizes under inventoryChoice. Put preparation preferences such as chilli/no chilli under customizations because they share product stock. Never invent option values, products, prices, or stock. For sourceImageIndex choose the clearest image where the product appears. Choose displayKind from the physical product: served for food or drink, hung for garments and bags, framed for prints and flat art, stacked for folded textiles/books/boxed sets, tabletop for small handled goods, or shelved for jars/bottles/collectibles and general fallback.',
       messages: [
         {
           role: 'user',

@@ -9,12 +9,11 @@ import type { Announcement } from '@/lib/use-drop-social'
 import type { SceneConfig } from '@/lib/world/scene-config'
 
 import { Awning, CounterClutter, INK, PendantLamp } from './decor'
-import { ProductFrame } from './product-frame'
+import { ProductStation } from './product-station'
 import {
   BookStack,
   BorderedRug,
   BRASS,
-  GalleryPictureLight,
   OAK_DARK,
   PLASTER,
   PottedOlive,
@@ -345,27 +344,22 @@ function RoomShell() {
   )
 }
 
-type Placement = {
+type StationPlacement = {
   position: [number, number, number]
   rotation: [number, number, number]
 }
 
-const PRODUCT_PLACEMENTS: readonly Placement[] = [
-  // The first four products seed four different walls. Additional products
-  // keep circulating around the room instead of filling one gallery row.
-  { position: [-5.82, 1.72, 1.9], rotation: [0, Math.PI / 2, 0] },
-  { position: [5.82, 1.72, 3.22], rotation: [0, -Math.PI / 2, 0] },
-  { position: [-4.7, 1.72, -4.32], rotation: [0, 0, 0] },
-  { position: [-0.25, 1.72, 4.32], rotation: [0, Math.PI, 0] },
-  { position: [-5.82, 1.72, -2.9], rotation: [0, Math.PI / 2, 0] },
-  { position: [5.82, 1.72, -3.22], rotation: [0, -Math.PI / 2, 0] },
-  { position: [-2.82, 1.72, -4.32], rotation: [0, 0, 0] },
-  { position: [2.05, 1.72, 4.32], rotation: [0, Math.PI, 0] },
-  { position: [-5.82, 1.72, 0], rotation: [0, Math.PI / 2, 0] },
-  { position: [4.35, 1.72, 4.32], rotation: [0, Math.PI, 0] },
-  { position: [-5.82, 1.72, 3.3], rotation: [0, Math.PI / 2, 0] },
-  { position: [-5.82, 1.72, -1.45], rotation: [0, Math.PI / 2, 0] },
-]
+const STATION_PLACEMENTS: Record<
+  SceneConfig['stations'][number]['zone'],
+  StationPlacement
+> = {
+  // Each surface faces the room, with the central rug left as circulation.
+  // Back-left deliberately stops short of the hanging store sign.
+  'back-left': { position: [-3.85, 0, -3.82], rotation: [0, 0, 0] },
+  window: { position: [5.28, 0, 0.18], rotation: [0, -Math.PI / 2, 0] },
+  'left-wall': { position: [-5.28, 0, 0.85], rotation: [0, Math.PI / 2, 0] },
+  'front-right': { position: [2.55, 0, 3.82], rotation: [0, Math.PI, 0] },
+}
 
 function ShopDecor({ accent }: { accent: string }) {
   const halfDepth = ROOM.depth / 2
@@ -419,6 +413,18 @@ function ShopDecor({ accent }: { accent: string }) {
       <PottedOlive position={[5.25, 0, 3.85]} scale={0.72} />
       <Vase position={[-5.5, 0, 4]} scale={1.5} color="#d9cfc0" stem={false} />
       <BookStack position={[4.9, 0, -4]} count={4} rotation={-0.4} />
+
+      {/* Half-packed stock keeps the room feeling actively worked in. */}
+      <group position={[-5.35, 0, 3.72]} rotation={[0, 0.22, 0]}>
+        <mesh position={[0, 0.25, 0]} castShadow>
+          <boxGeometry args={[0.78, 0.5, 0.62]} />
+          <meshStandardMaterial color="#a77a4f" roughness={1} />
+        </mesh>
+        <mesh position={[0.28, 0.66, -0.05]} rotation={[0, -0.18, 0]} castShadow>
+          <boxGeometry args={[0.58, 0.34, 0.5]} />
+          <meshStandardMaterial color="#b78b5d" roughness={1} />
+        </mesh>
+      </group>
     </>
   )
 }
@@ -462,31 +468,21 @@ export function StoreTemplate({
       />
       <WallTicker announcement={announcement} position={[0, 1.18, -4.29]} />
 
-      {config.slots.map((slot, index) => {
-        const product = productsById.get(slot.productId)
-        const placement = PRODUCT_PLACEMENTS[index]
-        if (!product || !placement) return null
+      {config.stations.map((station) => {
+        const placement = STATION_PLACEMENTS[station.zone]
 
         return (
           <group
-            key={slot.productId}
+            key={station.id}
             position={placement.position}
             rotation={placement.rotation}
-            scale={0.78}
           >
-            <GalleryPictureLight />
-            <ProductFrame
-              product={product}
-              imageUrl={slot.imageUrl}
+            <ProductStation
+              station={station}
+              productsById={productsById}
               accent={accent}
               disabled={windowClosed}
-              sparkleId={
-                announcement &&
-                announcement.kind !== 'summary' &&
-                announcement.productName === product.name
-                  ? announcement.id
-                  : undefined
-              }
+              announcement={announcement}
               onSelect={onSelectProduct}
             />
           </group>

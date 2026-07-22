@@ -59,6 +59,7 @@ function toPreviewProduct(product: ProductDraft, index: number): Product {
     name: product.name.trim() || `Item ${index + 1}`,
     variant: product.variant.trim() || null,
     image_url: product.imageUrl,
+    display_kind: product.displayKind,
     price: Math.min(...variants.map((variant) => variant.price)),
     stock_total: stockTotal,
     stock_sold: 0,

@@ -5,6 +5,15 @@ export { slugify } from '@/lib/format'
 const choiceNameSchema = z.string().trim().min(1).max(40)
 const choiceValueSchema = z.string().trim().min(1).max(60)
 
+export const productDisplayKindSchema = z.enum([
+  'served',
+  'hung',
+  'shelved',
+  'stacked',
+  'framed',
+  'tabletop',
+])
+
 export const customizationGroupSchema = z.object({
   name: choiceNameSchema,
   values: z.array(choiceValueSchema).min(2).max(8),
@@ -37,6 +46,7 @@ export const extractedMenuSchema = z.object({
         inventoryChoice: inventoryChoiceDraftSchema.nullable(),
         customizations: z.array(customizationGroupSchema).max(2),
         sourceImageIndex: z.number().int().min(0).max(4),
+        displayKind: productDisplayKindSchema,
       }),
     )
     .min(1)
@@ -101,6 +111,8 @@ export const createDropSchema = z.object({
         // null = no cap (future-ideas §3): sell until the seller ends it.
         stock: z.number().int().positive().max(100_000).nullable(),
         imageUrl: z.url().max(2_000).nullable(),
+        // Defaults keep pre-room-plan clients and manual products compatible.
+        displayKind: productDisplayKindSchema.default('shelved'),
         inventoryChoice: z
           .object({
             name: choiceNameSchema,
@@ -137,6 +149,7 @@ export const createDropSchema = z.object({
 })
 
 export type ExtractedMenu = z.infer<typeof extractedMenuSchema>
+export type ProductDisplayKind = z.infer<typeof productDisplayKindSchema>
 export type CustomizationGroup = z.infer<typeof customizationGroupSchema>
 export type StorefrontTheme = z.infer<typeof storefrontThemeSchema>
 export type DropDraft = z.infer<typeof dropDraftSchema>

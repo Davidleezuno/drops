@@ -152,6 +152,7 @@ export async function POST(request: NextRequest) {
       name: product.name,
       variant: product.variant || null,
       image_url: product.imageUrl,
+      display_kind: product.displayKind,
       price,
       stock_total: stockTotal,
       inventory_choice_name: product.inventoryChoice?.name ?? null,

@@ -16,6 +16,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import type { ProductDisplayKind } from '@/lib/drop-builder'
 
 export type ProductVariantDraft = {
   id: string
@@ -39,6 +40,7 @@ export type ProductDraft = {
   imageUrl: string | null
   imageSource: 'source' | 'uploaded' | 'generated' | null
   sourceImageIndex: number | null
+  displayKind: ProductDisplayKind
   inventoryChoiceName: string
   variants: ProductVariantDraft[]
   customizations: CustomizationDraft[]

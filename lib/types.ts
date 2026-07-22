@@ -1,5 +1,6 @@
 import type {
   CustomizationGroup,
+  ProductDisplayKind,
   StorefrontTheme,
 } from '@/lib/drop-builder'
 
@@ -38,6 +39,7 @@ export type Product = {
   name: string
   variant: string | null
   image_url: string | null
+  display_kind: ProductDisplayKind
   price: number
   stock_total: number | null
   stock_sold: number

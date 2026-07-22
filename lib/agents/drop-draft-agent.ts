@@ -3,13 +3,15 @@ import { z } from 'zod'
 
 import {
   dropDraftSchema,
+  productDisplayKindSchema,
   storefrontThemeSchema,
   type DropDraft,
 } from '@/lib/drop-builder'
 import type { DraftImage } from '@/lib/agents/types'
 import { clampTheme } from '@/lib/theme'
 
-const DEFAULT_DRAFT_MODEL = 'google/gemini-3.5-flash'
+const DEFAULT_CATALOG_MODEL = 'google/gemini-3.5-flash-lite'
+const DEFAULT_THEME_MODEL = 'google/gemini-3.5-flash'
 const DEFAULT_FALLBACK_MODEL = 'openai/gpt-5.6-terra'
 const GENERATION_TIMEOUT_MS = 20_000
 
@@ -22,6 +24,7 @@ const catalogDraftSchema = z.object({
         price: z.number().positive().max(100_000).nullable(),
         stock: z.number().int().nonnegative().max(100_000).nullable(),
         sourceImageIndex: z.number().int().min(0).max(4),
+        displayKind: productDisplayKindSchema,
       }),
     )
     .min(1)
@@ -52,6 +55,7 @@ Rules:
 - Make one product per distinct item/photo. Never invent a price or stock count; return null when it is not visibly stated.
 - Group visible variants under one product when possible. Do not generate common options that are not shown.
 - sourceImageIndex is the zero-based index of the clearest uploaded image showing the product.
+- Choose one displayKind from what the product physically is: served for food/drink, hung for garments or bags that drape, framed for prints and flat art, stacked for folded textiles/books/boxed sets, tabletop for small handled goods, and shelved for jars/bottles/collectibles or the safest general fallback.
 - List every missing seller decision in needsInput. Do not guess.`
 
 export const THEME_INSTRUCTIONS = `Design one restrained storefront theme from the seller's uploaded images.
@@ -97,7 +101,7 @@ function latencyProviderOptions(model: LanguageModel) {
     ? {
         google: {
           thinkingConfig: {
-            thinkingLevel: 'minimal' as const,
+            thinkingLevel: 'low' as const,
           },
         },
       }
@@ -150,7 +154,9 @@ export async function generateDropDraft(
   images: DraftImage[],
   options: GenerateDropDraftOptions = {},
 ): Promise<{ draft: DropDraft; timing: DraftGenerationTiming }> {
-  const model = options.model ?? process.env.DRAFT_MODEL ?? DEFAULT_DRAFT_MODEL
+  const modelOverride = options.model ?? process.env.DRAFT_MODEL
+  const catalogModel = modelOverride ?? DEFAULT_CATALOG_MODEL
+  const themeModel = modelOverride ?? DEFAULT_THEME_MODEL
   const fallbackModel =
     options.fallbackModel ??
     process.env.DRAFT_FALLBACK_MODEL ??
@@ -161,7 +167,7 @@ export async function generateDropDraft(
   const [catalog, storefront] = await Promise.all([
     withFallback({
       part: 'catalog',
-      model,
+      model: catalogModel,
       fallbackModel,
       timeoutMs,
       generate: async (selectedModel, abortSignal) => {
@@ -185,7 +191,7 @@ export async function generateDropDraft(
     }),
     withFallback({
       part: 'theme',
-      model,
+      model: themeModel,
       fallbackModel,
       timeoutMs,
       generate: async (selectedModel, abortSignal) => {

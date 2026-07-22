@@ -28,5 +28,6 @@ describe('drop builder contracts', () => {
     })
 
     expect(input.theme).toBeNull()
+    expect(input.products[0].displayKind).toBe('shelved')
   })
 })

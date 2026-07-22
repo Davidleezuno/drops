@@ -10,6 +10,7 @@ const fixture: DropDraft = {
       inventoryChoice: null,
       customizations: [],
       sourceImageIndex: 0,
+      displayKind: 'served',
     },
     {
       name: 'Pistachio Raspberry Tart',
@@ -19,6 +20,7 @@ const fixture: DropDraft = {
       inventoryChoice: null,
       customizations: [],
       sourceImageIndex: 0,
+      displayKind: 'served',
     },
     {
       name: 'Dark Chocolate Banana Loaf',
@@ -28,6 +30,7 @@ const fixture: DropDraft = {
       inventoryChoice: null,
       customizations: [],
       sourceImageIndex: 0,
+      displayKind: 'served',
     },
   ],
   theme: {

@@ -107,6 +107,7 @@ function newProduct(product?: {
   } | null
   customizations: Array<{ name: string; values: string[] }>
   sourceImageIndex?: number
+  displayKind?: ProductDraft['displayKind']
 }): ProductDraft {
   return {
     id: crypto.randomUUID(),
@@ -117,6 +118,7 @@ function newProduct(product?: {
     imageUrl: null,
     imageSource: null,
     sourceImageIndex: product?.sourceImageIndex ?? null,
+    displayKind: product?.displayKind ?? 'shelved',
     inventoryChoiceName: product?.inventoryChoice?.name ?? '',
     variants:
       product?.inventoryChoice?.values.map((variant) => ({
@@ -885,6 +887,7 @@ export function DropBuilder() {
             price: Number(product.price),
             stock: product.stock.trim() === '' ? null : Number(product.stock),
             imageUrl: product.imageUrl,
+            displayKind: product.displayKind,
             inventoryChoice:
               product.variants.length >= 2 &&
               product.inventoryChoiceName.trim()
