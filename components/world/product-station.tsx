@@ -201,7 +201,12 @@ export function ProductStation({
           </group>
         )
       })}
-      <Html center position={[-width / 2 + 0.35, 0.18, 0.44]} distanceFactor={6}>
+      <Html
+        center
+        position={[-width / 2 + 0.35, 0.18, 0.44]}
+        distanceFactor={6}
+        style={{ pointerEvents: 'none' }}
+      >
         <div className="pointer-events-none -rotate-2 whitespace-nowrap rounded-sm bg-[#3f392f] px-2 py-1 font-serif text-[9px] italic tracking-wide text-[#eee3cc] shadow-sm">
           {station.kind === 'serving'
             ? 'made today'

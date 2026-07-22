@@ -40,14 +40,25 @@ export function Avatar({
         <meshBasicMaterial color="#2d2925" />
       </mesh>
 
-      <Html center position={[0, 1.08, 0]} distanceFactor={4}>
+      <Html
+        center
+        position={[0, 1.08, 0]}
+        distanceFactor={4}
+        style={{ pointerEvents: 'none' }}
+      >
         <span className="pointer-events-none block whitespace-nowrap rounded-full border border-black/10 bg-white/95 px-2.5 py-1 text-[10px] font-semibold text-[#2d2925] shadow-sm">
           {local ? `${name} · you` : name}
         </span>
       </Html>
 
       {reaction && (
-        <Html key={reaction.id} center position={[0, 1.55, 0]} distanceFactor={4}>
+        <Html
+          key={reaction.id}
+          center
+          position={[0, 1.55, 0]}
+          distanceFactor={4}
+          style={{ pointerEvents: 'none' }}
+        >
           <span className="world-reaction-pop pointer-events-none block text-3xl">
             {REACTION_EMOJI[reaction.emoji]}
           </span>

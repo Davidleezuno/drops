@@ -75,9 +75,6 @@ export function PlayerControls({
 
     const down = (event: PointerEvent) => {
       if (!enabled) return
-      if (event.pointerType === 'touch' && event.clientX < window.innerWidth / 2) {
-        return
-      }
       dragging = true
       pointerId = event.pointerId
       lastClientX = event.clientX

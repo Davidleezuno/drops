@@ -25,7 +25,12 @@ export function WallTicker({
   if (!line) return null
 
   return (
-    <Html center position={position} distanceFactor={4.5}>
+    <Html
+      center
+      position={position}
+      distanceFactor={4.5}
+      style={{ pointerEvents: 'none' }}
+    >
       <div
         key={announcement?.id ?? line}
         className="motion-safe:animate-rise w-72 rounded-full border border-white/10 bg-[#2d2925]/95 px-4 py-2 text-center font-mono text-[10px] tracking-wide text-white shadow-lg"

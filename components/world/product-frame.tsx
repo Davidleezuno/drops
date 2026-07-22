@@ -122,14 +122,24 @@ export function ProductFrame({
           opacity={soldOut ? 0.5 : 1}
         />
       ) : (
-        <Html center position={[0, 0, 0.11]} distanceFactor={4.5}>
+        <Html
+          center
+          position={[0, 0, 0.11]}
+          distanceFactor={4.5}
+          style={{ pointerEvents: 'none' }}
+        >
           <div className="pointer-events-none flex size-28 items-center justify-center rounded-xl bg-[#f3eee7] text-center text-xs font-medium text-[#706a63]">
             Photo coming soon
           </div>
         </Html>
       )}
 
-      <Html center position={[0, -1.06, 0.1]} distanceFactor={4.5}>
+      <Html
+        center
+        position={[0, -1.06, 0.1]}
+        distanceFactor={4.5}
+        style={{ pointerEvents: 'none' }}
+      >
         <div className="pointer-events-none w-40 rounded-xl border border-black/10 bg-white/95 px-3 py-2 text-[#2d2925] shadow-sm">
           <p className="truncate text-xs font-semibold">{product.name}</p>
           <div className="mt-1 flex items-center justify-between gap-2 font-mono text-[10px] tabular-nums">
