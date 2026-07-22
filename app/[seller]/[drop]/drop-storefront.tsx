@@ -86,11 +86,14 @@ export function DropStorefront({
         className="mb-8"
       >
         {!windowClosed && drop.window_ends_at && (
-          <LivePill>
+          <LivePill className="gap-1.5 rounded-none bg-transparent p-0 text-[11px] text-muted-foreground">
             <Countdown endsAt={drop.window_ends_at} onEnd={closeWindow} />
           </LivePill>
         )}
-        <WatchingPill count={social.watching} />
+        <WatchingPill
+          count={social.watching}
+          className="rounded-none bg-transparent p-0 text-[11px] text-muted-foreground"
+        />
       </DropHeader>
 
       {/* Social overlays serve the race; the ended poster gets silence. */}
@@ -100,6 +103,12 @@ export function DropStorefront({
           <ReactionLayer
             subscribe={social.subscribeToReactions}
             react={social.react}
+            className={
+              drop.theme?.archetype === 'grid' ||
+              drop.theme?.archetype === 'spotlight'
+                ? 'max-sm:hidden'
+                : undefined
+            }
           />
         </>
       )}

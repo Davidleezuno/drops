@@ -1,4 +1,4 @@
-import { ProductRow } from '@/components/ds/product-row'
+import { ProductGridCard } from '@/components/ds/product-grid-card'
 import type { StorefrontTheme } from '@/lib/drop-builder'
 import type { Product } from '@/lib/types'
 
@@ -12,9 +12,8 @@ type ArchetypeProps = {
 }
 
 /**
- * grid — 2-col photo-forward cards (spec §8.2). Uses product-shot images
- * when present; the underlying row's muted placeholder handles the empty
- * case. One calm list beats a grid of chips.
+ * grid — a familiar two-column, photo-first mobile catalogue. Product option
+ * details stay in checkout so the listing remains tidy and easy to scan.
  */
 export function GridArchetype({
   products,
@@ -23,18 +22,19 @@ export function GridArchetype({
   pickupNote,
 }: ArchetypeProps) {
   return (
-    <ul className="grid grid-cols-2 gap-3">
+    <ul className="grid grid-cols-2 items-stretch gap-x-3 gap-y-8">
       {products.map((product, index) => (
         <li
           key={product.id}
           className="animate-rise"
           style={{ animationDelay: `${index * 60}ms` }}
         >
-          <ProductRow
+          <ProductGridCard
             product={product}
             fulfilment={fulfilment}
             deliveryFee={deliveryFee}
             pickupNote={pickupNote}
+            priority={index < 2}
           />
         </li>
       ))}

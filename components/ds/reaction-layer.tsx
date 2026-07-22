@@ -39,9 +39,11 @@ function usePrefersReducedMotion() {
 export function ReactionLayer({
   subscribe,
   react,
+  className,
 }: {
   subscribe: (listener: (emoji: ReactionEmoji) => void) => () => void
   react: (emoji: ReactionEmoji) => void
+  className?: string
 }) {
   const reducedMotion = usePrefersReducedMotion()
   const [floaters, setFloaters] = useState<Floater[]>([])
@@ -105,7 +107,10 @@ export function ReactionLayer({
     <>
       {/* Floaters ride the right edge in one non-interactive layer. */}
       <div
-        className="pointer-events-none fixed right-3 bottom-36 z-30 h-[45svh] w-20"
+        className={cn(
+          'pointer-events-none fixed right-3 bottom-36 z-30 h-[45svh] w-20',
+          className,
+        )}
         aria-hidden
       >
         {floaters.map((floater) => (
@@ -122,7 +127,12 @@ export function ReactionLayer({
         ))}
       </div>
 
-      <div className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-40 flex items-center gap-2">
+      <div
+        className={cn(
+          'fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+4.5rem)] z-40 flex items-center gap-2',
+          className,
+        )}
+      >
         {overflowCount > 0 && (
           <span
             key={overflowCount}

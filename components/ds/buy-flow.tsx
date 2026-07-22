@@ -40,6 +40,7 @@ export function BuyFlow({
   pickupNote,
   initialOpen = false,
   onClose,
+  triggerClassName,
 }: {
   productId: string
   productName: string
@@ -54,6 +55,7 @@ export function BuyFlow({
   pickupNote: string | null
   initialOpen?: boolean
   onClose?: () => void
+  triggerClassName?: string
 }) {
   const [open, setOpen] = useState(initialOpen)
   const [mobileCheckout, setMobileCheckout] = useState(false)
@@ -122,7 +124,12 @@ export function BuyFlow({
 
   if (remaining !== null && remaining <= 0) {
     return (
-      <Button type="button" size="lg" className="mt-4 h-12 w-full" disabled>
+      <Button
+        type="button"
+        size="lg"
+        className={cn('mt-4 h-12 w-full', triggerClassName)}
+        disabled
+      >
         Sold out
       </Button>
     )
@@ -176,7 +183,7 @@ export function BuyFlow({
       <Button
         type="button"
         size="lg"
-        className="mt-4 h-12 w-full"
+        className={cn('mt-4 h-12 w-full', triggerClassName)}
         aria-label={`Buy ${productName}`}
         onClick={() => {
           setMobileCheckout(window.matchMedia('(max-width: 639px)').matches)
@@ -184,7 +191,7 @@ export function BuyFlow({
         }}
       >
         {sortedVariants.length > 1 || customizationGroups.length
-          ? 'Select options'
+          ? 'Buy'
           : 'Buy'}
       </Button>
     )
