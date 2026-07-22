@@ -6,6 +6,7 @@
 export type ProtoProduct = {
   id: string
   name: string
+  variant?: string | null
   price: number
   left: number | null // null = unlimited
   image: string
@@ -17,6 +18,8 @@ export type ProtoSeller = {
   dropTitle: string
   tagline: string
   accent: string
+  vertical?: 'fnb' | 'fashion' | 'beauty' | 'collectibles' | 'services' | 'other'
+  href?: string
   products: ProtoProduct[]
 }
 
@@ -59,10 +62,10 @@ export const SHOPHOUSE: ProtoSeller = {
 }
 
 export const FRONT_ROOM: ProtoSeller = {
-  name: 'Soft Hour Skin',
-  dropTitle: 'The evening edit',
-  tagline: "A seller's actual front room, styled for company.",
-  accent: '#8f7fb8',
+  name: 'Soft Hour Goods',
+  dropTitle: 'Made at the front table',
+  tagline: "A tiny home shop, five minutes after the maker stepped out.",
+  accent: '#73806a',
   products: [
     {
       id: 'sk-cleanser',
@@ -131,8 +134,26 @@ export type VariantMeta = {
 
 export const VARIANTS: VariantMeta[] = [
   {
-    key: 'shophouse',
+    key: 'domestic-circuit',
     label: 'A',
+    name: 'The Working Circuit',
+    blurb:
+      'Two generous multi-product stations: wearables gather by the window, while desk and small goods live on the packing sideboard. The middle stays social and clear.',
+    seller: FRONT_ROOM,
+    camera: { position: [4.9, 1.78, 5.6], target: [-0.2, 0.95, -0.45] },
+  },
+  {
+    key: 'domestic-loop',
+    label: 'B',
+    name: 'The Supper Circuit',
+    blurb:
+      'A food-safe circuit: supper sets share a serving dresser while drinks and extras sit at the window counter. Nothing hangs where dinner should be served.',
+    seller: FRONT_ROOM,
+    camera: { position: [4.8, 1.82, 5.5], target: [-0.25, 1.0, -0.55] },
+  },
+  {
+    key: 'shophouse',
+    label: 'C',
     name: 'The Corner Shophouse',
     blurb:
       'The spec vibe, interior-designed: limewash plaster, oak beams, an arched niche for the hero, brass picture lights, a fluted counter, one big mullioned window.',
@@ -141,16 +162,16 @@ export const VARIANTS: VariantMeta[] = [
   },
   {
     key: 'front-room',
-    label: 'B',
-    name: 'The Front Room',
+    label: 'D',
+    name: 'The Maker’s Front Room',
     blurb:
-      "The most literal home-based business: the seller's living room, styled for company. Walnut credenza, leaning frames on picture ledges, bouclé sofa, tungsten lamps.",
+      'A small, lived-in selling room: one grainy worktable, three chosen objects, window light, a cold mug and half-packed orders. The owner will be right back.',
     seller: FRONT_ROOM,
-    camera: { position: [3.4, 1.8, 5.0], target: [-1.3, 1.0, -0.6] },
+    camera: { position: [4.5, 1.72, 5.35], target: [-0.35, 1.0, -0.35] },
   },
   {
     key: 'conservatory',
-    label: 'C',
+    label: 'E',
     name: 'The Conservatory',
     blurb:
       'A garden glasshouse turned weekend atelier: terracotta tiles, white brick, steel-and-glass gable roof throwing rafter shadows, a potting bench for a counter.',
@@ -159,4 +180,4 @@ export const VARIANTS: VariantMeta[] = [
   },
 ]
 
-export const DEFAULT_VARIANT = VARIANTS[0].key
+export const DEFAULT_VARIANT = 'domestic-circuit'

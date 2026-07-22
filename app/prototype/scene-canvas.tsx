@@ -8,10 +8,16 @@ import { Suspense } from 'react'
 
 import type { VariantMeta } from './data'
 import { ConservatoryScene } from './variants/conservatory'
-import { FrontRoomScene } from './variants/front-room'
+import {
+  DomesticCircuitScene,
+  DomesticLoopScene,
+  FrontRoomScene,
+} from './variants/front-room'
 import { ShophouseScene } from './variants/shophouse'
 
 const SCENES = {
+  'domestic-circuit': DomesticCircuitScene,
+  'domestic-loop': DomesticLoopScene,
   shophouse: ShophouseScene,
   'front-room': FrontRoomScene,
   conservatory: ConservatoryScene,

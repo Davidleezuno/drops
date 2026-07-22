@@ -10,14 +10,31 @@ import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
-import { DEFAULT_VARIANT, VARIANTS } from './data'
+import { VARIANTS } from './data'
+import type { ProtoSeller } from './data'
 
 const SceneCanvas = dynamic(() => import('./scene-canvas'), { ssr: false })
 
-export function PrototypeApp({ variantKey }: { variantKey: string }) {
+export function PrototypeApp({
+  variantKey,
+  store,
+  foodStore,
+}: {
+  variantKey: string
+  store: ProtoSeller | null
+  foodStore: ProtoSeller | null
+}) {
   const router = useRouter()
   const index = Math.max(0, VARIANTS.findIndex((v) => v.key === variantKey))
-  const variant = VARIANTS[index] ?? VARIANTS[0]
+  const baseVariant = VARIANTS[index] ?? VARIANTS[0]
+  const variantStore = baseVariant.key === 'domestic-loop'
+    ? foodStore
+    : (baseVariant.key === 'front-room' || baseVariant.key === 'domestic-circuit')
+      ? store
+      : null
+  const variant = variantStore
+    ? { ...baseVariant, seller: variantStore, blurb: variantStore.tagline }
+    : baseVariant
 
   const go = (next: number) => {
     const wrapped = (next + VARIANTS.length) % VARIANTS.length
@@ -36,7 +53,7 @@ export function PrototypeApp({ variantKey }: { variantKey: string }) {
   })
 
   return (
-    <div className="fixed inset-0 bg-[#e9e0cf]">
+    <div className="fixed inset-0 overflow-hidden bg-[#cbbda6]">
       <SceneCanvas variant={variant} />
 
       {/* photographic vignette — cheap, does a lot */}
@@ -49,20 +66,29 @@ export function PrototypeApp({ variantKey }: { variantKey: string }) {
       />
 
       {/* seller card, top left */}
-      <div className="absolute left-5 top-5 max-w-xs rounded-2xl border border-black/5 bg-white/85 px-5 py-4 shadow-sm backdrop-blur-sm">
-        <p className="font-mono text-[10px] uppercase tracking-widest text-[#8a8175]">
-          drops / prototype
+      <div className="absolute left-4 top-4 max-w-[280px] rotate-[-0.35deg] border border-[#302a24]/15 bg-[#e6dcc9]/92 px-5 py-4 shadow-[3px_5px_20px_rgba(48,42,36,0.14)] backdrop-blur-[2px] sm:left-6 sm:top-6 sm:max-w-xs">
+        <span className="absolute -top-2 left-1/2 h-4 w-20 -translate-x-1/2 rotate-[-2deg] bg-[#c6b17a]/65" />
+        <p className="font-mono text-[9px] uppercase tracking-[0.22em] text-[#776b5b]">
+          front room / open today
         </p>
-        <h1 className="mt-1.5 font-display text-2xl font-extrabold leading-tight text-[#2d2925]">
+        <h1 className="mt-2 font-display text-2xl font-extrabold leading-[0.95] text-[#302a24]">
           {variant.seller.name}
         </h1>
-        <p className="text-sm font-medium text-[#5c554c]">{variant.seller.dropTitle}</p>
-        <p className="mt-2 text-xs leading-relaxed text-[#8a8175]">{variant.blurb}</p>
+        <p className="mt-1.5 font-display text-sm font-semibold text-[#5e6655]">{variant.seller.dropTitle}</p>
+        <p className="mt-2 text-xs leading-relaxed text-[#716759]">{variant.blurb}</p>
+        {variant.seller.href && (
+          <a
+            href={variant.seller.href}
+            className="mt-3 inline-flex border-b border-[#302a24]/35 pb-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-[#302a24] transition hover:border-[#302a24]"
+          >
+            View live storefront ↗
+          </a>
+        )}
       </div>
 
       {/* hint, bottom left */}
-      <p className="absolute bottom-5 left-5 font-mono text-[10px] uppercase tracking-widest text-[#6b6257]/70">
-        drag to look · scroll to zoom
+      <p className="absolute bottom-5 left-5 hidden font-mono text-[9px] uppercase tracking-[0.2em] text-[#493f34]/65 sm:block">
+        drag the room · scroll closer
       </p>
 
       {/* variant switcher, bottom centre */}
