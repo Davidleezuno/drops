@@ -53,10 +53,18 @@ export function WorldGate({
 
     const chooseRenderer = () => {
       const supported = !reducedMotion.matches && webglAvailable()
+      const storeRequested =
+        new URLSearchParams(window.location.search).get('store') === '1'
       setCapable(supported)
-      setShowWorld(
-        supported && new URLSearchParams(window.location.search).get('list') !== '1',
-      )
+      setShowWorld(supported && storeRequested)
+      if (!supported || !storeRequested) {
+        setWorldReady(false)
+        setEntering(false)
+        if (entranceTimer.current !== null) {
+          window.clearTimeout(entranceTimer.current)
+          entranceTimer.current = null
+        }
+      }
     }
 
     chooseRenderer()
@@ -77,19 +85,20 @@ export function WorldGate({
     [],
   )
 
-  const setListMode = useCallback((list: boolean) => {
+  const showProductGrid = useCallback(() => {
     const url = new URL(window.location.href)
-    if (list) url.searchParams.set('list', '1')
-    else url.searchParams.delete('list')
+    url.searchParams.delete('store')
+    url.searchParams.delete('list')
     window.history.pushState({}, '', url)
     setWorldReady(false)
     setEntering(false)
-    setShowWorld(!list)
+    setShowWorld(false)
   }, [])
 
   const enterStore = useCallback(() => {
     const url = new URL(window.location.href)
     url.searchParams.delete('list')
+    url.searchParams.set('store', '1')
     window.history.pushState({}, '', url)
     setWorldReady(false)
     setEntering(true)
@@ -106,7 +115,7 @@ export function WorldGate({
     entranceTimer.current = window.setTimeout(() => {
       setEntering(false)
       entranceTimer.current = null
-    }, 1_050)
+    }, 420)
   }, [entering])
 
   return (
@@ -115,7 +124,7 @@ export function WorldGate({
       {config && capable && !showWorld && (
         <button
           type="button"
-          className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-30 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg transition-transform duration-150 active:scale-95"
+          className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-30 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg transition-transform duration-150 active:scale-[0.98]"
           onClick={enterStore}
         >
           <DoorOpen className="size-4" />
@@ -128,22 +137,15 @@ export function WorldGate({
           config={config}
           entering={entering}
           onReady={markWorldReady}
-          onExit={() => setListMode(true)}
+          onExit={showProductGrid}
         />
       )}
       {config && entering && (
         <div
-          className="world-threshold"
+          className="world-entry-fade"
           data-ready={worldReady ? 'true' : 'false'}
           aria-hidden="true"
-        >
-          <div className="world-threshold__door world-threshold__door--left" />
-          <div className="world-threshold__door world-threshold__door--right" />
-          <div className="world-threshold__copy">
-            <span className="world-threshold__dot" />
-            <span>Stepping into {config.sign.title}</span>
-          </div>
-        </div>
+        />
       )}
     </>
   )

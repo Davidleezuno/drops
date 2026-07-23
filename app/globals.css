@@ -244,82 +244,21 @@
   }
 }
 
-/* The flat catalogue gives way like a pair of shop doors while the camera
-   crosses the threshold. Transform + opacity only keeps this smooth on the
-   same mobile devices doing the WebGL work. */
-.world-threshold {
+/* A short warm crossfade bridges the catalogue and WebGL scene. It stays
+   deliberately neutral so the spatial camera movement does the storytelling. */
+.world-entry-fade {
   position: fixed;
   inset: 0;
   z-index: 70;
-  overflow: hidden;
   pointer-events: none;
-  background: #211a16;
+  background: rgb(238 233 225 / 96%);
+  opacity: 1;
+  transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: opacity;
 }
 
-.world-threshold__door {
-  position: absolute;
-  inset-block: 0;
-  width: calc(50% + 1px);
-  background:
-    linear-gradient(90deg, rgb(255 255 255 / 3%), transparent 18%, transparent 82%, rgb(0 0 0 / 18%)),
-    repeating-linear-gradient(90deg, #34271f 0 18px, #2d211b 18px 20px, #3a2b22 20px 48px);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 5%);
-  transition: transform 900ms cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: transform;
-}
-
-.world-threshold__door--left {
-  left: 0;
-  border-right: 1px solid rgb(235 207 158 / 45%);
-}
-
-.world-threshold__door--right {
-  right: 0;
-  border-left: 1px solid rgb(235 207 158 / 45%);
-}
-
-.world-threshold[data-ready='true'] .world-threshold__door--left {
-  transform: translateX(-102%);
-}
-
-.world-threshold[data-ready='true'] .world-threshold__door--right {
-  transform: translateX(102%);
-}
-
-.world-threshold__copy {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.55rem;
-  padding: 1.5rem;
-  color: rgb(250 244 234 / 78%);
-  font-family: var(--font-geist-mono), ui-monospace, monospace;
-  font-size: 0.6875rem;
-  letter-spacing: 0.08em;
-  text-align: center;
-  text-transform: uppercase;
-  transition: opacity 180ms ease-out;
-}
-
-.world-threshold[data-ready='true'] .world-threshold__copy {
+.world-entry-fade[data-ready='true'] {
   opacity: 0;
-}
-
-.world-threshold__dot {
-  width: 0.4rem;
-  height: 0.4rem;
-  border-radius: 999px;
-  background: #74ad7e;
-  box-shadow: 0 0 0 0.22rem rgb(116 173 126 / 12%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .world-threshold__door,
-  .world-threshold__copy {
-    transition-duration: 0.01ms;
-  }
 }
 
 .world-reaction-pop {

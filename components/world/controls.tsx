@@ -187,12 +187,12 @@ export function PlayerControls({
     )
     if (entering) {
       entranceElapsed.current += delta
-      const progress = Math.min(1, entranceElapsed.current / 1.05)
+      const progress = Math.min(1, entranceElapsed.current / 0.42)
       const eased = 1 - Math.pow(1 - progress, 4)
       const doorway = new Vector3(
-        cameraTarget.x - 0.2,
-        cameraTarget.y + 0.4,
-        cameraTarget.z + 3.2,
+        cameraTarget.x - 0.05,
+        cameraTarget.y + 0.1,
+        cameraTarget.z + 0.8,
       )
       camera.position.lerpVectors(doorway, cameraTarget, eased)
     } else {

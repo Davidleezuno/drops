@@ -277,7 +277,7 @@ export function WorldCanvas({
       {!entering && <PurchaseBanner announcement={announcement} />}
 
       <div
-        className={`pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4 pt-[calc(env(safe-area-inset-top)+1rem)] transition-opacity duration-500 ${entering ? 'opacity-0' : 'opacity-100'}`}
+        className={`pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4 pt-[calc(env(safe-area-inset-top)+1rem)] transition-opacity duration-300 ${entering ? 'opacity-0' : 'opacity-100'}`}
       >
         <div className="rounded-2xl border border-white/35 bg-white/90 px-3.5 py-2 shadow-lg backdrop-blur-sm">
           <p className="max-w-48 truncate text-sm font-semibold">{config.sign.title}</p>
@@ -296,7 +296,7 @@ export function WorldCanvas({
       </div>
 
       <div
-        className={`pointer-events-none absolute bottom-5 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-3 rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs text-white backdrop-blur-sm transition-opacity duration-500 md:flex ${entering ? 'opacity-0' : 'opacity-100'}`}
+        className={`pointer-events-none absolute bottom-5 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-3 rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs text-white backdrop-blur-sm transition-opacity duration-300 md:flex ${entering ? 'opacity-0' : 'opacity-100'}`}
       >
         <span className="inline-flex items-center gap-1.5">
           <Move className="size-3.5" /> WASD to walk
