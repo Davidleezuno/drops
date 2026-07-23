@@ -7,6 +7,7 @@ import { worldIdentity } from '@/lib/world/names'
 
 const MAX_WORLD_SHOPPERS = 20
 const MOVEMENT_SHARDS = 5
+const MOVEMENT_SHARD_SIZE = MAX_WORLD_SHOPPERS / MOVEMENT_SHARDS
 const MOVE_HEARTBEAT_MS = 2_000
 const MOVE_STATE_CHANGE_MIN_MS = 1_000
 
@@ -139,14 +140,14 @@ export function useWorldPresence({
           fullNotifiedRef.current = false
           setAdmitted(true)
           setShopperCount(admittedEntries.length)
-          const ownMovementShard = ownIndex % MOVEMENT_SHARDS
+          const ownMovementShard = Math.floor(ownIndex / MOVEMENT_SHARD_SIZE)
           setMovementShard(ownMovementShard)
 
           const rendered = admittedEntries
             .filter(
               (entry, index) =>
                 entry.key !== presenceKey &&
-                index % MOVEMENT_SHARDS === ownMovementShard,
+                Math.floor(index / MOVEMENT_SHARD_SIZE) === ownMovementShard,
             )
 
           renderedKeysRef.current = new Set(rendered.map((entry) => entry.key))
