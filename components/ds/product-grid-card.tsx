@@ -29,15 +29,15 @@ export function ProductGridCard({
   const hasVariablePrice =
     new Set(product.variants.map((variant) => variant.price)).size > 1
 
-  return (
-    <article className="flex h-full min-w-0 flex-col">
+  const content = (
+    <>
       <div className="relative aspect-square overflow-hidden rounded-xl bg-muted">
         {product.image_url ? (
           <Image
             src={product.image_url}
             alt={`${product.name} product shot`}
             fill
-            className="object-cover transition-transform duration-300 motion-safe:hover:scale-[1.02]"
+            className="object-cover transition-transform duration-300 motion-safe:group-hover/card:scale-[1.02]"
             sizes="(max-width: 448px) 50vw, 208px"
             priority={priority}
           />
@@ -83,20 +83,32 @@ export function ProductGridCard({
           )}
         </div>
       </div>
+    </>
+  )
 
-      <BuyFlow
-        productId={product.id}
-        productName={product.name}
-        unitPrice={product.price}
-        remaining={remaining}
-        inventoryChoiceName={product.inventory_choice_name}
-        variants={product.variants}
-        customizationGroups={product.customization_groups}
-        fulfilment={fulfilment}
-        deliveryFee={deliveryFee}
-        pickupNote={pickupNote}
-        triggerClassName="mt-3 h-11"
-      />
+  return (
+    <article
+      className={`group/card relative flex h-full min-w-0 flex-col rounded-xl ${
+        soldOut ? 'opacity-70' : ''
+      }`}
+    >
+      {content}
+      {!soldOut && (
+        <BuyFlow
+          productId={product.id}
+          productName={product.name}
+          unitPrice={product.price}
+          remaining={remaining}
+          inventoryChoiceName={product.inventory_choice_name}
+          variants={product.variants}
+          customizationGroups={product.customization_groups}
+          fulfilment={fulfilment}
+          deliveryFee={deliveryFee}
+          pickupNote={pickupNote}
+          triggerClassName="absolute inset-0 z-10 rounded-xl outline-none transition-transform duration-150 ease-out active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 motion-reduce:transition-none"
+          triggerContent={<span className="sr-only">Buy {product.name}</span>}
+        />
+      )}
     </article>
   )
 }

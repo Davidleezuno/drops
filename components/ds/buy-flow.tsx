@@ -1,7 +1,7 @@
 'use client'
 
 import { LoaderCircle, LockKeyhole, X } from 'lucide-react'
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 
 import { Price } from '@/components/ds/price'
@@ -41,6 +41,7 @@ export function BuyFlow({
   initialOpen = false,
   onClose,
   triggerClassName,
+  triggerContent,
 }: {
   productId: string
   productName: string
@@ -56,6 +57,7 @@ export function BuyFlow({
   initialOpen?: boolean
   onClose?: () => void
   triggerClassName?: string
+  triggerContent?: ReactNode
 }) {
   const [open, setOpen] = useState(initialOpen)
   const [mobileCheckout, setMobileCheckout] = useState(false)
@@ -179,16 +181,31 @@ export function BuyFlow({
   }
 
   if (!open) {
+    const openCheckout = () => {
+      setMobileCheckout(window.matchMedia('(max-width: 639px)').matches)
+      setOpen(true)
+    }
+
+    if (triggerContent) {
+      return (
+        <button
+          type="button"
+          className={triggerClassName}
+          aria-label={`Buy ${productName}`}
+          onClick={openCheckout}
+        >
+          {triggerContent}
+        </button>
+      )
+    }
+
     return (
       <Button
         type="button"
         size="lg"
         className={cn('mt-4 h-12 w-full', triggerClassName)}
         aria-label={`Buy ${productName}`}
-        onClick={() => {
-          setMobileCheckout(window.matchMedia('(max-width: 639px)').matches)
-          setOpen(true)
-        }}
+        onClick={openCheckout}
       >
         {sortedVariants.length > 1 || customizationGroups.length
           ? 'Buy'

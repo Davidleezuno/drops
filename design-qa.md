@@ -1,68 +1,52 @@
-# Storefront shophouse refresh — design QA
+# Mobile product grid entry CTA — design QA
 
-- Source visual truth: `/tmp/drops-storefront-audit/01-shophouse-desktop.png`
-- Implementation desktop: `/tmp/drops-storefront-qa/13-framed-spread-desktop-final.png`
-- Implementation mobile: `/tmp/drops-storefront-qa/12-framed-spread-mobile-final.png`
-- Full-view comparison: `/tmp/drops-storefront-qa/14-old-frame-vs-final.png`
-- Viewports: 1280×720 desktop and 390×844 mobile
-- State: Roti Wife themed storefront, initial walk-in view. The sandbox drop is expired, so the production sign and list correctly show the closed state. The source uses prototype catalogue copy while the implementation uses live seeded product data.
+- Source visual truth: `/Users/davidlee/.codex/generated_images/019f8a75-2dc3-7040-a030-e6e6bdc15b68/call_HF04HBPELOBKs084RN5KuEWb.png`
+- Implementation screenshot: `/tmp/drops-enter-store-final.png`
+- Full-view comparison: `/tmp/drops-enter-store-comparison.jpg`
+- Focused button comparison: `/tmp/drops-enter-store-button-comparison.jpg`
+- Viewport: 390 × 844 CSS px at device scale factor 1
+- Source pixels: 853 × 1844, normalized to 390 × 844 with a north-aligned cover crop
+- Implementation pixels: 390 × 844
+- State: default buyer product grid with the fixed Enter store CTA visible
 
 ## Findings
 
-No actionable P0, P1, or P2 visual findings remain.
+No actionable P0, P1, or P2 differences remain.
 
-- Fonts and typography: production UI retains the existing Instrument Sans/Bricolage/Geist Mono hierarchy. The in-world wooden sign uses the same display and mono font assets as the storefront system; product labels remain the existing live `ProductFrame` typography.
-- Spacing and layout rhythm: the prototype's open floor, offset doorway, bordered rug, arched back wall, counter, window, and exposed beams are preserved. A continuous dark-oak floor/ceiling ring plus four corner posts now clearly bounds the dollhouse. Products circulate across four walls instead of filling one gallery row.
-- Colors and visual tokens: limewash cream, warm oak, dark ink trim, terracotta/sage props, brass details, and soft morning light match the source direction. Seller accent remains data-driven and is confined to identity surfaces.
-- Image quality and asset fidelity: the implementation uses the existing real seller product photography with cover crops; no placeholder or synthetic product imagery was introduced.
-- Copy and content: prototype-only explanatory copy and variant controls are omitted intentionally. Live seller name, status, stock, price, reactions, and list escape remain unchanged.
-- Icons and controls: production list, movement, and reaction controls are retained because they are required functionality outside the passive source prototype.
-- Accessibility: the existing WebGL capability check, reduced-motion fallback, persistent list escape, semantic overlay buttons, and 44px mobile controls remain intact.
-- Responsive behavior: at 390×844 the top controls, joystick, reactions, structural boundary, avatar, and products on opposing walls are visible without persistent-control overlap or horizontal page overflow.
+- Fonts and typography: the implementation retains the existing storefront font hierarchy and closely matches the selected reference’s label size, weight, and contrast.
+- Spacing and layout rhythm: the CTA is a 44px touch target at the same bottom-right inset as the selected reference. Removing the repeated Buy bars makes the catalogue denser while preserving the two-column rhythm.
+- Colors and visual tokens: the existing warm background, near-black action surface, off-white foreground, radius, and elevation tokens are preserved.
+- Image quality and asset fidelity: existing seller product photography remains unchanged and sharp. The doorway uses the project’s Lucide icon system rather than a custom approximation.
+- Copy and content: the CTA label is exactly “Enter store.” Repeated visible Buy labels are removed; available product cards retain accessible “Buy {product}” names.
+- Interaction and accessibility: each available card opens its existing checkout; sold-out cards remain inert. The door rotates in perspective for 280ms before store entry, the CTA compresses for tactile feedback, and reduced-motion CSS removes the transition.
+
+## Full-view comparison evidence
+
+The combined comparison shows that the implementation preserves the selected option’s product-grid context, bottom-right placement, compact dark pill, and open-door cue. The missing per-card Buy bars are an intentional user-requested change after selection, not fidelity drift.
+
+## Focused comparison evidence
+
+The focused crop confirms matching control height, pill radius, label hierarchy, and elevation. The implementation uses a thinner library doorway glyph than the generated mock; this is intentional so the icon remains consistent with the product’s existing iconography and animates cleanly.
+
+## Functional verification
+
+- TypeScript compilation passed.
+- Focused ESLint passed for all changed TypeScript files.
+- The repository-wide lint command remains blocked by an unrelated existing `react-hooks/immutability` error in `components/landing/storefront-model.tsx`.
+- Browser test: tapping the first product card opened its checkout dialog without removing the visible card content.
+- Browser test: tapping Enter store set `data-opening="true"`, then navigated to `?store=1` and loaded the interactive store.
+- Browser console contained no errors.
 
 ## Comparison history
 
 ### Iteration 1
 
-- Earlier finding: **P1 — opaque doorway glow blocked the production follow camera.** The source's outdoor glow plane works with an orbit camera but filled the live walk-in viewport.
-- Fix: removed the doorway glow plane while retaining the large window glow and the shophouse lighting rig.
-- Post-fix evidence: `/tmp/drops-storefront-qa/02-shophouse-refresh-desktop-fixed.png`.
-
-### Iteration 2
-
-- Earlier finding: **P1 — the initial 390px view did not reveal merchandise.** The straight-ahead camera showed the open floor before any product frames.
-- Fix: angled the initial player/camera heading toward the equal-priority gallery wall. No product was promoted to a hero.
-- Post-fix evidence: `/tmp/drops-storefront-qa/05-shophouse-refresh-mobile-final.png`.
-
-### Iteration 3
-
-- Earlier finding: **P1 — wall planes ended without a visible structural boundary.** The room read as clipped geometry floating in the scene instead of a complete shop.
-- Fix: added a continuous dark-oak top and base ring with full-height posts at all four corners, matching the strong shop-window silhouette of the previous renderer.
-- Post-fix evidence: `/tmp/drops-storefront-qa/13-framed-spread-desktop-final.png`.
-
-### Iteration 4
-
-- Earlier finding: **P2 — low-count catalogues clustered products on the left wall.** That concentrated both visual attention and likely shopper movement in one corner.
-- Fix: changed deterministic slot order so the first four products seed four different walls; subsequent products continue circulating around the room up to the 12-slot limit.
-- Post-fix evidence: `/tmp/drops-storefront-qa/12-framed-spread-mobile-final.png` and `/tmp/drops-storefront-qa/13-framed-spread-desktop-final.png`.
-
-## Focused comparison evidence
-
-The original-resolution desktop and mobile captures were inspected for sign typography, product image sharpness, stock-card spacing, doorway trim, window/curtain treatment, awning stripes, and persistent controls. A separate crop was not needed because those surfaces are legible at the saved native resolutions.
-
-## Functional verification
-
-- Production build and TypeScript compilation passed.
-- Focused ESLint pass passed.
-- `lib/world/scene-config.test.ts`: 3/3 passed, including 12 equal wall slots and overflow truncation.
-- Browser-rendered desktop and 390×844 mobile states captured.
-- `View as list` → ended list state → `Enter the store` round trip passed.
-- Browser console contained no application errors. Existing Three.js clock/shadow deprecation warnings remain.
-- Live checkout could not be re-run because every themed sandbox fixture is currently past its selling window. Product selection and `BuyFlow` wiring were not changed by this refresh.
+- Earlier finding: product content was nested directly inside a button, weakening document semantics and allowing the grid item to disappear from the underlying layout while checkout was open.
+- Fix: kept each product as an article and added a full-card semantic button overlay with an accessible product-specific label.
+- Post-fix evidence: `/tmp/drops-enter-store-final.png`; the browser accessibility tree preserves the article, image, heading, price, stock, and unique checkout button.
 
 ## Follow-up polish
 
-- P3: tune the initial yaw per device after testing on the actual demo phone.
-- P3: revisit the upstream Three.js deprecation warnings when dependencies are next upgraded.
+- P3: the thin doorway glyph is more restrained than the generated mock’s filled warm doorway; retain it unless real-device feedback asks for stronger visual emphasis.
 
 final result: passed

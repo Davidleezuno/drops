@@ -45,7 +45,9 @@ export function WorldGate({
   const [showWorld, setShowWorld] = useState(false)
   const [worldReady, setWorldReady] = useState(false)
   const [entering, setEntering] = useState(false)
+  const [doorOpening, setDoorOpening] = useState(false)
   const entranceTimer = useRef<number | null>(null)
+  const doorTimer = useRef<number | null>(null)
 
   useEffect(() => {
     if (!config) return
@@ -81,6 +83,9 @@ export function WorldGate({
       if (entranceTimer.current !== null) {
         window.clearTimeout(entranceTimer.current)
       }
+      if (doorTimer.current !== null) {
+        window.clearTimeout(doorTimer.current)
+      }
     },
     [],
   )
@@ -92,6 +97,7 @@ export function WorldGate({
     window.history.pushState({}, '', url)
     setWorldReady(false)
     setEntering(false)
+    setDoorOpening(false)
     setShowWorld(false)
   }, [])
 
@@ -104,6 +110,24 @@ export function WorldGate({
     setEntering(true)
     setShowWorld(true)
   }, [])
+
+  const beginEnterStore = useCallback(() => {
+    if (doorOpening) return
+
+    const reducedMotion = window.matchMedia(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+    if (reducedMotion) {
+      enterStore()
+      return
+    }
+
+    setDoorOpening(true)
+    doorTimer.current = window.setTimeout(() => {
+      enterStore()
+      doorTimer.current = null
+    }, 280)
+  }, [doorOpening, enterStore])
 
   const markWorldReady = useCallback(() => {
     setWorldReady(true)
@@ -124,10 +148,14 @@ export function WorldGate({
       {config && capable && !showWorld && (
         <button
           type="button"
-          className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-30 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg transition-transform duration-150 active:scale-[0.98]"
-          onClick={enterStore}
+          className="enter-store-button group fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-30 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg outline-none transition-[transform,box-shadow] duration-150 ease-out active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          data-opening={doorOpening ? 'true' : 'false'}
+          aria-busy={doorOpening}
+          onClick={beginEnterStore}
         >
-          <DoorOpen className="size-4" />
+          <span className="enter-store-door" aria-hidden="true">
+            <DoorOpen className="size-4" strokeWidth={1.8} />
+          </span>
           Enter store
         </button>
       )}
