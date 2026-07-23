@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Drops — HitPay Build Night</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Instrument+Sans:wght@400..600&family=Geist+Mono:wght@400..600&display=swap" rel="stylesheet" />
+<style>
+/* ============================================================
+   Drops deck — built on the product's own design tokens
+   (docs/design-brief.md · app/globals.css). Warm white + ink,
+   one flame accent, Bricolage display / Instrument body / Geist mono.
+   ============================================================ */
+:root{
+  --background: oklch(0.9873 0.0034 84);
+  --foreground: oklch(0.2444 0.0135 62);
+  --card: oklch(1 0 0);
+  --primary: oklch(0.2444 0.0135 62);
+  --primary-foreground: oklch(0.9873 0.0034 84);
+  --flame: oklch(0.6301 0.1806 40);
+  --flame-soft: oklch(0.9448 0.0227 74);
+  --muted: oklch(0.9558 0.0072 84);
+  --muted-foreground: oklch(0.5001 0.0181 64);
+  --border: oklch(0.9216 0.0092 80);
+  --live: oklch(0.5911 0.1338 155);
+  --live-soft: oklch(0.956 0.0428 152);
+  --low: oklch(0.5561 0.1345 65);
+  --low-soft: oklch(0.9575 0.0554 90);
+  --alarm: oklch(0.5473 0.2195 27);
+  --alarm-soft: oklch(0.9482 0.0287 27);
+
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Geist Mono', ui-monospace, 'SF Mono', monospace;
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+*{ box-sizing:border-box; margin:0; padding:0; }
+html,body{ height:100%; }
+body{
+  background: oklch(0.94 0.006 84);
+  font-family: var(--font-sans);
+  color: var(--foreground);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+  display:flex; align-items:center; justify-content:center;
+}
+
+/* ---- 16:9 stage, scaled to viewport ---- */
+#viewport{ position:fixed; inset:0; overflow:hidden; }
+#stage{
+  width:1280px; height:720px; position:absolute; left:50%; top:50%;
+  background:var(--background);
+  overflow:hidden;
+  transform: translate(-50%,-50%) scale(var(--scale,1));
+  transform-origin:center center;
+  box-shadow: 0 30px 90px rgb(45 41 37 / 22%);
+}
+
+/* ---- slides ---- */
+.slide{
+  position:absolute; inset:0;
+  padding:72px 84px;
+  display:flex; flex-direction:column;
+  opacity:0; visibility:hidden;
+  transition: opacity .45s var(--ease);
+}
+.slide.active{ opacity:1; visibility:visible; }
+.slide.active .rise{ animation: rise .7s var(--ease) both; }
+@keyframes rise{ from{opacity:0; transform:translateY(14px);} to{opacity:1; transform:none;} }
+
+/* ---- typography ---- */
+.kicker{
+  font-family:var(--font-mono); font-size:15px; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--muted-foreground);
+}
+.kicker .slug{ color:var(--flame); }
+h1{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; line-height:1.02; color:var(--foreground); }
+h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; line-height:1.04; }
+.lead{ font-size:23px; line-height:1.5; color:var(--muted-foreground); max-width:22ch; }
+.flame{ color:var(--flame); }
+.mono{ font-family:var(--font-mono); font-variant-numeric:tabular-nums; }
+
+/* pills / chips */
+.pill{ display:inline-flex; align-items:center; gap:9px; border-radius:999px;
+  padding:9px 18px; font-size:15px; font-weight:600; }
+.pill-ink{ background:var(--primary); color:var(--primary-foreground); }
+.pill-soft{ background:var(--card); border:1px solid var(--border); color:var(--foreground); }
+.dot{ width:9px; height:9px; border-radius:999px; background:var(--live); box-shadow:0 0 0 0 rgb(62 141 97 / 45%); animation:ping 2s var(--ease) infinite; }
+@keyframes ping{ 0%,100%{opacity:.6;} 50%{opacity:1; box-shadow:0 0 0 5px rgb(62 141 97 / 12%);} }
+
+.card{ background:var(--card); border:1px solid var(--border); border-radius:24px;
+  box-shadow: 0 1px 2px rgb(45 41 37 / 5%), 0 18px 40px rgb(45 41 37 / 7%); }
+
+/* footer chrome */
+.foot{ position:absolute; left:84px; right:84px; bottom:34px;
+  display:flex; align-items:center; justify-content:space-between;
+  font-family:var(--font-mono); font-size:13px; color:var(--muted-foreground); }
+.foot .brand{ font-weight:600; letter-spacing:.02em; }
+.foot .brand b{ color:var(--flame); }
+#progress{ position:absolute; left:0; bottom:0; height:3px; background:var(--flame); width:0; transition:width .4s var(--ease); z-index:5; }
+
+/* ============================================================
+   SLIDE 1 — hook
+   ============================================================ */
+.hook{ display:grid; grid-template-columns: 1.05fr 0.95fr; gap:56px; flex:1; align-items:center; }
+.hook h1{ font-size:60px; }
+.hook .lead{ margin-top:22px; max-width:26ch; }
+.hook .media{ position:relative; height:520px; }
+.hook .food{ position:absolute; right:8px; top:0; width:300px; height:400px; object-fit:cover;
+  border-radius:24px; box-shadow:0 20px 50px rgb(45 41 37 / 26%); transform:rotate(2.2deg); }
+.hook .profile{ position:absolute; left:0; bottom:24px; width:404px; border-radius:20px;
+  box-shadow:0 18px 44px rgb(45 41 37 / 30%); transform:rotate(-2deg); border:6px solid #0d0d0d; background:#0d0d0d; }
+
+/* ============================================================
+   SLIDE 2 — pain stepper
+   ============================================================ */
+.pain{ display:flex; flex-direction:column; flex:1; }
+.pain h2{ font-size:40px; margin-bottom:26px; }
+.pain .body{ display:grid; grid-template-columns: 1fr 560px; gap:40px; flex:1; min-height:0; }
+
+.steps{ position:relative; padding-left:8px; align-self:center; }
+.steps .track{ position:absolute; left:26px; top:22px; bottom:22px; width:2px; background:var(--border); }
+.steps .track-fill{ position:absolute; left:26px; top:22px; width:2px; background:var(--flame);
+  height: calc((100% - 44px) * (var(--active-step,1) - 1) / 4); transition:height .5s var(--ease); }
+.step{ position:relative; display:flex; gap:22px; align-items:flex-start; padding:13px 0;
+  transition:opacity .4s var(--ease); }
+.step .node{ position:relative; z-index:2; flex:0 0 auto; width:38px; height:38px; border-radius:999px;
+  background:var(--card); border:2px solid var(--border); display:grid; place-items:center;
+  font-family:var(--font-mono); font-size:14px; font-weight:600; color:var(--muted-foreground);
+  transition:all .4s var(--ease); }
+.step .txt{ padding-top:5px; }
+.step .label{ font-family:var(--font-display); font-weight:700; font-size:22px; letter-spacing:-0.01em;
+  color:var(--muted-foreground); transition:color .4s var(--ease); }
+.step .detail{ font-size:16px; color:var(--muted-foreground); max-height:0; opacity:0; overflow:hidden;
+  transition:all .45s var(--ease); }
+
+.step.is-future{ opacity:.42; }
+.step.is-past .node{ background:var(--flame-soft); border-color:var(--flame-soft); color:var(--flame); }
+.step.is-active{ opacity:1; }
+.step.is-active .node{ background:var(--primary); border-color:var(--primary); color:var(--primary-foreground);
+  transform:scale(1.06); box-shadow:0 0 0 6px var(--flame-soft); }
+.step.is-active .label{ color:var(--foreground); }
+.step.is-active .detail{ max-height:40px; opacity:1; margin-top:5px; }
+
+.shotpanel{ position:relative; align-self:center; height:560px; border-radius:26px;
+  background: oklch(0.9558 0.0072 84); border:1px solid var(--border);
+  box-shadow: inset 0 1px 3px rgb(45 41 37 / 6%); overflow:hidden; }
+.shot{ position:absolute; inset:18px; display:grid; place-items:center; opacity:0; transform:scale(.985);
+  transition:opacity .5s var(--ease), transform .5s var(--ease); }
+.shot img{ max-width:100%; max-height:100%; object-fit:contain; border-radius:14px;
+  box-shadow:0 12px 30px rgb(45 41 37 / 18%); }
+.shot.is-active{ opacity:1; transform:none; }
+.shot .tag{ position:absolute; bottom:2px; left:50%; transform:translateX(-50%); white-space:nowrap;
+  background:var(--primary); color:var(--primary-foreground); font-family:var(--font-mono);
+  font-size:13px; padding:6px 14px; border-radius:999px; box-shadow:0 6px 16px rgb(45 41 37 / 22%); }
+
+/* ============================================================
+   SLIDE 3 — four hats
+   ============================================================ */
+.center-head{ margin-bottom:34px; }
+.center-head h2{ font-size:46px; }
+.center-head p{ font-size:21px; color:var(--muted-foreground); margin-top:12px; }
+.grid4{ display:grid; grid-template-columns:1fr 1fr; gap:22px; flex:1; align-content:center; }
+.hat{ display:flex; gap:20px; align-items:center; padding:28px 30px; }
+.hat .ic{ font-size:38px; line-height:1; }
+.hat .h{ font-family:var(--font-display); font-weight:700; font-size:24px; }
+.hat .s{ font-size:16px; color:var(--muted-foreground); margin-top:3px; }
+
+/* ============================================================
+   SLIDE 4 — pattern
+   ============================================================ */
+.pattern{ flex:1; display:grid; grid-template-columns:1.15fr 0.85fr; gap:48px; align-items:center; }
+.pattern h2{ font-size:44px; max-width:15ch; }
+.pattern h2 .flame{ }
+.who-scatter{ display:flex; flex-wrap:wrap; gap:14px; align-content:center; }
+.seller-chip{ display:inline-flex; align-items:center; gap:10px; padding:12px 18px; border-radius:999px;
+  background:var(--card); border:1px solid var(--border); font-weight:600; font-size:16px;
+  box-shadow:0 8px 20px rgb(45 41 37 / 6%); }
+.seller-chip .e{ font-size:20px; }
+
+/* ============================================================
+   SLIDE 5 — HMW
+   ============================================================ */
+.hmw{ flex:1; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.hmw .tag{ font-family:var(--font-mono); font-size:16px; letter-spacing:.16em; text-transform:uppercase;
+  color:var(--muted-foreground); margin-bottom:28px; }
+.hmw h1{ font-size:66px; max-width:19ch; }
+
+/* ============================================================
+   SLIDE 6 — meet drops
+   ============================================================ */
+.solve{ flex:1; display:grid; grid-template-columns:1fr 1fr; gap:56px; align-items:center; }
+.solve h1{ font-size:62px; }
+.solve .url{ display:inline-flex; margin-top:20px; font-family:var(--font-mono); font-size:22px;
+  background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px 20px;
+  box-shadow:0 10px 26px rgb(45 41 37 / 8%); }
+.solve .url .path{ color:var(--muted-foreground); }
+.solve .url .slug{ color:var(--flame); }
+.promise{ padding:26px 28px; }
+.promise + .promise{ margin-top:20px; }
+.promise .who{ font-family:var(--font-mono); font-size:13px; letter-spacing:.12em; text-transform:uppercase; color:var(--flame); }
+.promise .what{ font-family:var(--font-display); font-weight:700; font-size:24px; margin-top:8px; line-height:1.2; }
+
+/* ============================================================
+   SLIDE 7 — demo card
+   ============================================================ */
+.demo{ flex:1; background:var(--primary); color:var(--primary-foreground);
+  margin:-72px -84px; padding:72px 84px; display:flex; flex-direction:column; justify-content:center; }
+.demo .live{ display:inline-flex; align-items:center; gap:10px; align-self:flex-start;
+  border:1px solid rgb(255 255 255 / 22%); border-radius:999px; padding:8px 16px;
+  font-family:var(--font-mono); font-size:14px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:26px; }
+.demo h1{ color:var(--primary-foreground); font-size:60px; }
+.demo .beats{ display:flex; gap:14px; margin-top:40px; flex-wrap:wrap; }
+.beat{ display:flex; align-items:center; gap:14px; }
+.beat .b{ display:flex; flex-direction:column; }
+.beat .n{ font-family:var(--font-mono); font-size:13px; color:var(--flame); }
+.beat .t{ font-family:var(--font-display); font-weight:700; font-size:20px; }
+.beat .arrow{ color:rgb(255 255 255 / 40%); font-size:22px; }
+
+/* ============================================================
+   SLIDE 8 — wedge (impact / biz)
+   ============================================================ */
+.impact{ flex:1; display:flex; flex-direction:column; }
+.impact .center-head{ margin-bottom:24px; }
+.wedge{ flex:1; display:grid; grid-template-columns:1fr 84px 1fr 84px 1fr; align-items:center; gap:0; }
+.wedge .col-h{ font-family:var(--font-mono); font-size:13px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--muted-foreground); margin-bottom:14px; }
+.arch{ display:flex; flex-direction:column; gap:10px; }
+.arch .row{ display:flex; align-items:center; gap:12px; font-weight:600; font-size:17px; }
+.arch .row .e{ font-size:20px; }
+.offtag{ margin-top:14px; font-family:var(--font-mono); font-size:13px; color:var(--alarm); }
+.wedge .arrow{ text-align:center; color:var(--muted-foreground); font-size:30px; }
+.linknode{ text-align:center; }
+.linknode .lp{ display:inline-flex; flex-direction:column; align-items:center; gap:8px;
+  background:var(--card); border:1px solid var(--border); border-radius:20px; padding:22px 20px;
+  box-shadow:0 14px 34px rgb(45 41 37 / 10%); }
+.linknode .lp .u{ font-family:var(--font-mono); font-size:16px; }
+.linknode .lp .u .slug{ color:var(--flame); }
+.linknode .lp .qr{ font-size:30px; }
+.hpnode{ background: oklch(0.956 0.0428 152); border:1px solid oklch(0.5911 0.1338 155 / 35%);
+  border-radius:20px; padding:20px 22px; }
+.hpnode .t{ font-family:var(--font-display); font-weight:700; font-size:19px; color:var(--live); margin-bottom:8px; }
+.hpnode ul{ list-style:none; display:flex; flex-direction:column; gap:6px; }
+.hpnode li{ font-size:16px; color:var(--foreground); }
+.statband{ margin-top:22px; display:flex; align-items:baseline; gap:16px; justify-content:center;
+  border-top:1px solid var(--border); padding-top:18px; }
+.statband .big{ font-family:var(--font-display); font-weight:800; font-size:40px; color:var(--foreground); }
+.statband .lbl{ font-size:17px; color:var(--muted-foreground); }
+
+/* ============================================================
+   SLIDE 9 — how we built it
+   ============================================================ */
+.tech{ flex:1; display:flex; flex-direction:column; }
+.pipe{ display:grid; grid-template-columns:1fr 54px 1fr 54px 1fr; align-items:stretch; gap:0; margin-top:8px; }
+.stage-card{ padding:26px 26px; display:flex; flex-direction:column; gap:8px; }
+.stage-card .n{ font-family:var(--font-mono); font-size:13px; color:var(--flame); letter-spacing:.08em; }
+.stage-card .h{ font-family:var(--font-display); font-weight:700; font-size:23px; }
+.stage-card .d{ font-size:16px; color:var(--muted-foreground); line-height:1.4; }
+.pipe .arrow{ display:grid; place-items:center; color:var(--muted-foreground); font-size:26px; }
+.pipe .owns{ font-family:var(--font-mono); font-size:12px; margin-top:auto; padding-top:8px; }
+.owns.ai{ color:var(--muted-foreground); }
+.owns.det{ color:var(--flame); }
+.owns.hp{ color:var(--live); }
+.proofrow{ display:flex; gap:16px; margin-top:26px; align-items:center; flex-wrap:wrap; }
+.proof{ display:inline-flex; align-items:center; gap:10px; background: oklch(0.956 0.0428 152);
+  border:1px solid oklch(0.5911 0.1338 155 / 30%); color:var(--live); border-radius:999px;
+  padding:10px 18px; font-family:var(--font-mono); font-size:15px; font-weight:600; }
+.builtwith{ font-size:16px; color:var(--muted-foreground); }
+.builtwith b{ color:var(--foreground); }
+
+/* ============================================================
+   SLIDE 10 — close
+   ============================================================ */
+.close{ flex:1; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
+.close h1{ font-size:74px; max-width:16ch; }
+.close .road{ font-size:21px; color:var(--muted-foreground); margin-top:26px; max-width:40ch; line-height:1.5; }
+.close .end{ margin-top:34px; font-family:var(--font-mono); font-size:20px; }
+.close .end .slug{ color:var(--flame); }
+
+/* ============================================================
+   SLIDE 11 — Q&A appendix
+   ============================================================ */
+.qa .center-head h2{ font-size:38px; }
+.qa .list{ display:grid; grid-template-columns:1fr 1fr; gap:14px 40px; flex:1; align-content:center; }
+.qa .q{ display:flex; gap:14px; align-items:flex-start; }
+.qa .q .num{ font-family:var(--font-mono); color:var(--flame); font-size:15px; padding-top:2px; }
+.qa .q .txt{ font-size:17px; line-height:1.35; }
+.qa .q .txt b{ font-weight:600; }
+
+/* help hint */
+#hint{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%);
+  font-family:var(--font-mono); font-size:12px; color:oklch(0.5 0.01 64); opacity:.7;
+  background:rgb(255 255 255 / 70%); padding:5px 12px; border-radius:999px; transition:opacity .4s; z-index:20; }
+#hint.hide{ opacity:0; }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="stage">
+
+    <!-- 1 · HOOK -->
+    <section class="slide" data-name="Hook">
+      <div class="kicker rise"><span class="slug">drops</span> · HitPay Build Night</div>
+      <div class="hook">
+        <div>
+          <h1 class="rise">Last week I bought pani puri from this auntie on TikTok.</h1>
+          <p class="lead rise">She has 9,295 followers and growing!</p>
+        </div>
+        <div class="media rise">
+          <img class="food" src="/slides-assets/panipuri-food.png" alt="Pani puri" />
+          <img class="profile" src="/slides-assets/tiktok-profile.png" alt="Rotififi on TikTok" />
+        </div>
+      </div>
+      <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">01</span></div>
+    </section>
+
+    <!-- 2 · PAIN STEPPER -->
+    <section class="slide" data-name="The pain" data-steps="5" style="--active-step:1">
+      <div class="pain">
+      <h2 class="rise">Manual buying process on WhatsApp</h2>
+      <div class="body">
+        <div class="steps">
+          <div class="track"></div>
+          <div class="track-fill"></div>
+
+          <div class="step" data-step="1">
+            <div class="node">1</div>
+            <div class="txt">
+              <div class="label">Find the right seller</div>
+              <div class="detail">Jump from TikTok to WhatsApp and verify that the number is really hers.</div>
+            </div>
+          </div>
+          <div class="step" data-step="2">
+            <div class="node">2A</div>
+            <div class="txt">
+              <div class="label">Start the order in chat</div>
+              <div class="detail">Verify the contact, ask what is available, then share the delivery address.</div>
+            </div>
+          </div>
+          <div class="step" data-step="3">
+            <div class="node">2B</div>
+            <div class="txt">
+              <div class="label">Browse the catalogue</div>
+              <div class="detail">Two images forwarded in WhatsApp become the entire storefront.</div>
+            </div>
+          </div>
+          <div class="step" data-step="4">
+            <div class="node">3</div>
+            <div class="txt">
+              <div class="label">Schedule delivery &amp; pay</div>
+              <div class="detail">Agree on the fee and timing, confirm the total, PayLah, then send proof.</div>
+            </div>
+          </div>
+          <div class="step" data-step="5">
+            <div class="node">4</div>
+            <div class="txt">
+              <div class="label">Become a loyal customer</div>
+              <div class="detail">The food is worth it. The manual workflow should not be the price of coming back.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="shotpanel">
+          <div class="shot" data-step="1"><img src="/slides-assets/tiktok-profile.png" alt="TikTok profile" /><span class="tag">Found her on TikTok</span></div>
+          <div class="shot" data-step="2"><img src="/slides-assets/wa-verify.png" alt="Original WhatsApp ordering conversation" /><span class="tag">Verify · ask · share address</span></div>
+          <div class="shot" data-step="3"><img src="/slides-assets/product-cards.png" alt="Original product catalogue images" /><span class="tag">Set A $35 · Set B $65</span></div>
+          <div class="shot" data-step="4"><img src="/slides-assets/wa-payment.png" alt="Original delivery scheduling and payment conversation" /><span class="tag">$13 delivery · 6pm tomorrow · $48 paid</span></div>
+          <div class="shot" data-step="5"><img src="/slides-assets/loyal-fan.png" alt="Original happy customer conversation" /><span class="tag">"thank you so much!!!"</span></div>
+        </div>
+      </div>
+      </div>
+      <div id="progress"></div>
+    </section>
+
+    <!-- 3 · FOUR HATS -->
+    <section class="slide" data-name="Four hats">
+      <div class="center-head rise">
+        <h2>Its hard for sellers to manage.</h2>
+        <p>Day in the life of a seller.</p>
+      </div>
+      <div class="grid4">
+        <div class="hat card rise"><div class="ic">📣</div><div><div class="h">Go Live on TikTok</div><div class="s">Engage, sell, reply, chase, repost</div></div></div>
+        <div class="hat card rise"><div class="ic">🍳</div><div><div class="h">Prepare food</div><div class="s">Prep and cook to fresh demand</div></div></div>
+        <div class="hat card rise"><div class="ic">💰</div><div><div class="h">Accept payments</div><div class="s">PayNow screenshots matched by hand</div></div></div>
+        <div class="hat card rise"><div class="ic">🛵</div><div><div class="h">Coordinate deliveries</div><div class="s">Addresses, timing, packing lists</div></div></div>
+      </div>
+      <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">03</span></div>
+    </section>
+
+    <!-- 4 · PATTERN -->
+    <section class="slide" data-name="A pattern">
+      <div class="pattern">
+        <h2 class="rise">There are many people like Auntie Rotififi — selling to a <span class="flame">growing fan base.</span></h2>
+        <div class="who-scatter rise">
+          <span class="seller-chip"><span class="e">🧁</span> Home-based F&amp;B</span>
+          <span class="seller-chip"><span class="e">📱</span> Live-stream sellers</span>
+          <span class="seller-chip"><span class="e">🛒</span> Group-buys</span>
+          <span class="seller-chip"><span class="e">🎪</span> Pop-ups</span>
+          <span class="seller-chip"><span class="e">🎨</span> Creators &amp; merch runs</span>
+        </div>
+      </div>
+      <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">04</span></div>
+    </section>
+
+    <!-- 5 · HMW -->
+    <section class="slide" data-name="How might we">
+      <div class="hmw">
+        <div class="tag rise">How might we</div>
+        <h1 class="rise">make it <span class="flame">super easy</span> for people with a following to spin up a storefront for their fans?</h1>
+      </div>
+      <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">05</span></div>
+    </section>
+
+    <!-- 6 · MEET DROPS -->
+    <section class="slide" data-name="Meet Drops">
+      <div class="solve">
+        <div>
+          <div class="kicker rise" style="margin-bottom:18px;">The solution</div>
+          <h1 class="rise">Meet Drops.</h1>
+          <p class="lead rise" style="margin-top:18px; max-width:24ch;">Upload product photos → a live storefront in 60 seconds.</p>
+        </div>
+        <div>
+          <div class="promise card rise">
+            <div class="who">For the seller</div>
+            <div class="what">A storefront that looks like <span class="flame">you</span> — not a template. Live, ASAP.</div>
+          </div>
+          <div class="promise card rise">
+            <div class="who">For the buyer</div>
+            <div class="what">You <span class="flame">walk into a little shop</span>, with other people — not a checkout form.</div>
+          </div>
+        </div>
+      </div>
+      <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">06</span></div>
+    </section>
+
+    <!-- 7 · DEMO -->
+    <section class="slide" data-name="Live demo">
+      <div class="demo">
+        <span class="live rise"><span class="dot"></span> Live demo</span>
+        <h1 class="rise">Let's build Rotififi's drop — live.</h1>
+        <div class="beats rise">
+          <div class="beat"><div class="b"><span class="n">01</span><span class="t">Spin up</span></div><span class="arrow">→</span></div>
+          <div class="beat"><div class="b"><span class="n">02</span><span class="t">Walk in</span></div><span class="arrow">→</span></div>
+          <div class="beat"><div class="b"><span class="n">03</span><span class="t">The rush</span></div><span class="arrow">→</span></div>
+          <div class="beat"><div class="b"><span class="n">04</span><span class="t">Settle</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8 · IMPACT / WEDGE -->
+    <section class="slide" data-name="Impact">
+      <div class="impact">
+        <div class="center-head rise">
+          <h2 style="font-size:40px;">Who it's for — and why it matters to HitPay.</h2>
+        </div>
+        <div class="wedge rise">
+          <div class="arch">
+            <div class="col-h">Selling off-platform today</div>
+            <div class="row"><span class="e">🧁</span> Home-based F&amp;B</div>
+            <div class="row"><span class="e">📱</span> Live-stream sellers</div>
+            <div class="row"><span class="e">🛒</span> Group-buys</div>
+            <div class="row"><span class="e">🎪</span> Pop-ups</div>
+            <div class="offtag">→ PayNow screenshots · off your rails</div>
+          </div>
+          <div class="arrow">→</div>
+          <div class="linknode">
+            <div class="col-h">One drop link</div>
+            <div class="lp"><span class="qr">▦</span><span class="u">drops.sg/<span class="slug">…</span></span></div>
+          </div>
+          <div class="arrow">→</div>
+          <div>
+            <div class="col-h">Onto HitPay</div>
+            <div class="hpnode">
+              <div class="t">Payment volume</div>
+              <ul>
+                <li>Born as HitPay payment requests</li>
+                <li>Webhook-reconciled orders</li>
+                <li>Acquires the long tail you don't capture yet</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="statband rise">
+          <span class="big">≈ US$1.3B</span>
+          <span class="lbl">Singapore live commerce (DBS, 2025) — the market these sellers already serve.</span>
+        </div>
+      </div>
+      <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">08</span></div>
+    </section>
+
+    <!-- 9 · HOW WE BUILT IT -->
+    <section class="slide" data-name="How we built it">
+      <div class="tech">
+        <div class="center-head rise">
+          <h2 style="font-size:40px;">How we built it.</h2>
+          <p>AI is only the setup. Money and stock stay deterministic.</p>
+        </div>
+        <div class="pipe rise">
+          <div class="stage-card card">
+            <span class="n">SETUP</span><span class="h">AI vision</span>
+            <span class="d">Photo → products, prices, variants. Asks only what blocks checkout.</span>
+            <span class="owns ai owns-line">proposes — never decides</span>
+          </div>
+          <div class="arrow">→</div>
+          <div class="stage-card card">
+            <span class="n">DURING</span><span class="h">State machine</span>
+            <span class="d">One guarded atomic write owns stock. The last unit resolves to exactly one PAID.</span>
+            <span class="owns det">owns stock &amp; money</span>
+          </div>
+          <div class="arrow">→</div>
+          <div class="stage-card card">
+            <span class="n">AFTER</span><span class="h">HitPay webhook</span>
+            <span class="d">Paid state only from the signature-validated webhook. Never the redirect.</span>
+            <span class="owns hp">the source of truth</span>
+          </div>
+        </div>
+        <div class="proofrow rise">
+          <span class="proof">✓ race:proof — 12 concurrent · exactly 4 PAID / 8 PAID_LATE · never oversold</span>
+          <span class="builtwith">Built with the <b>HitPay integration skill</b> &amp; Claude Code plugin.</span>
+        </div>
+      </div>
+      <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">09</span></div>
+    </section>
+
+    <!-- 10 · CLOSE -->
+    <section class="slide" data-name="Close">
+      <div class="close">
+        <h1 class="rise">Ten messages became <span class="flame">one link.</span></h1>
+        <p class="road rise">Next: returning-buyer memory, one-tap rebuy, and collab drops with split settlement — point any audience at a drop link.</p>
+        <div class="end rise"><span class="slug">drops.sg</span> · built for a person with a following.</div>
+      </div>
+      <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">10</span></div>
+    </section>
+
+    <!-- 11 · Q&A APPENDIX -->
+    <section class="slide qa" data-name="Q&amp;A appendix">
+      <div class="center-head rise">
+        <h2>Q&amp;A — the objections, ready.</h2>
+        <p>Appendix · keep <span class="mono">race:proof</span> on a tab as the "is it real?" trump card.</p>
+      </div>
+      <div class="list rise">
+        <div class="q"><span class="num">01</span><span class="txt"><b>"Isn't this a feature HitPay already has?"</b> → Different object, different user. It's an on-ramp, not a wrapper.</span></div>
+        <div class="q"><span class="num">02</span><span class="txt"><b>"What's the business model?"</b> → Rides payment volume + acquires the off-platform long tail.</span></div>
+        <div class="q"><span class="num">03</span><span class="txt"><b>"PAID_LATE refunds a payer — why not reserve?"</b> → Reservations undersell during the rush; one guarded write, one clean refund.</span></div>
+        <div class="q"><span class="num">04</span><span class="txt"><b>"Will non-technical sellers switch?"</b> → Zero switching cost — same photo, same channels, magic-link auth.</span></div>
+        <div class="q"><span class="num">05</span><span class="txt"><b>"Is the 3D a gimmick / copyable?"</b> → It's the on-ramp charm; the moat is off-platform + self-reconciliation.</span></div>
+        <div class="q"><span class="num">06</span><span class="txt"><b>"Distribution?"</b> → The drop link is the growth loop; sellers cluster in the same communities.</span></div>
+        <div class="q"><span class="num">07</span><span class="txt"><b>"Only drops?"</b> → Always-on is a drop with the window off. Lead with the moment of highest pain.</span></div>
+      </div>
+      <div class="foot"><span class="brand"><b>drops</b> · appendix</span><span class="mono">Q&amp;A</span></div>
+    </section>
+
+  </div>
+</div>
+<div id="hint">← → move · click to advance · F fullscreen</div>
+
+<script>
+(function(){
+  const stage = document.getElementById('stage');
+  const slides = [...document.querySelectorAll('.slide')];
+  const progress = document.getElementById('progress');
+  const hint = document.getElementById('hint');
+  let idx = 0, step = 0;
+
+  function fit(){
+    const s = Math.min(window.innerWidth/1280, window.innerHeight/720);
+    stage.style.setProperty('--scale', s);
+  }
+  window.addEventListener('resize', fit); fit();
+
+  function stepsOf(s){ return parseInt(s.dataset.steps||'0',10); }
+
+  function render(){
+    slides.forEach((s,i)=> s.classList.toggle('active', i===idx));
+    const s = slides[idx];
+    const total = stepsOf(s);
+    if(total){
+      s.style.setProperty('--active-step', step);
+      s.querySelectorAll('.step').forEach(el=>{
+        const n = +el.dataset.step;
+        el.classList.toggle('is-active', n===step);
+        el.classList.toggle('is-past', n<step);
+        el.classList.toggle('is-future', n>step);
+      });
+      s.querySelectorAll('.shot').forEach(el=>{
+        el.classList.toggle('is-active', +el.dataset.step===step);
+      });
+      if(progress) progress.style.width = (step/total*100)+'%';
+    }
+  }
+
+  function enter(i, dir){
+    idx = Math.max(0, Math.min(slides.length-1, i));
+    const total = stepsOf(slides[idx]);
+    step = total ? (dir<0 ? total : 1) : 0;
+    render();
+  }
+
+  function next(){
+    const s = slides[idx], total = stepsOf(s);
+    if(total && step < total){ step++; render(); return; }
+    if(idx < slides.length-1) enter(idx+1, 1);
+  }
+  function prev(){
+    const s = slides[idx], total = stepsOf(s);
+    if(total && step > 1){ step--; render(); return; }
+    if(idx > 0) enter(idx-1, -1);
+  }
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.key==='ArrowRight'||e.key===' '||e.key==='PageDown'){ e.preventDefault(); next(); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ e.preventDefault(); prev(); }
+    else if(e.key==='Home'){ enter(0,1); }
+    else if(e.key==='End'){ enter(slides.length-1,1); }
+    else if(e.key.toLowerCase()==='f'){ if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+    if(hint){ hint.classList.add('hide'); }
+  });
+  stage.addEventListener('click', (e)=>{ if(e.clientX < window.innerWidth*0.28) prev(); else next(); });
+
+  enter(0,1);
+})();
+</script>
+</body>
+</html>
