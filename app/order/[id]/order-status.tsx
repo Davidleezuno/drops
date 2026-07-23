@@ -200,14 +200,13 @@ export function OrderStatus({ order }: { order: BuyerOrder }) {
                   Leave a note for {order.sellerName}
                 </CardTitle>
                 <CardDescription className="max-w-sm leading-relaxed">
-                  A short thank-you will appear in the store for other shoppers
-                  to see. Don&rsquo;t include private information.
+                  Say Thanks! Leave a note for {order.sellerName} to show your appreciation.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {buyerNote ? (
                   <div role="status" className="rounded-xl border border-live/20 bg-white/75 p-4">
-                    <p className="font-medium">Your note is on the wall.</p>
+                    <p className="font-medium">Your note has been posted.</p>
                     <p className="mt-2 text-sm leading-relaxed text-foreground/70">
                       &ldquo;{buyerNote}&rdquo;
                     </p>
@@ -237,7 +236,7 @@ export function OrderStatus({ order }: { order: BuyerOrder }) {
                         size="lg"
                         disabled={!noteDraft.trim() || sendingNote}
                       >
-                        {sendingNote ? 'Sending…' : 'Add to the wall'}
+                        {sendingNote ? 'Sending…' : 'Post Note'}
                       </Button>
                     </div>
                     <p

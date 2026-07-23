@@ -9,7 +9,7 @@
 
 Drops lets anyone with a following — a home baker, a TikTok live seller, a creator doing a merch run — spin up a live, self-expiring storefront in under 60 seconds. One link goes out to WhatsApp, Instagram, Telegram; buyers race a live stock counter and pay via HitPay; the seller ends the night with reconciled orders and a packing list.
 
-The thesis: **storefronts were built for corporations; Drops is commerce built around a person.** A drop is the unit of person-anchored commerce — usually a time-bound moment, sometimes an ongoing link ([future-ideas.md §3](future-ideas.md)). Urgency is a mode the data activates, not the identity.
+The thesis: **Drops is commerce built around a person.** A drop is the unit of person-anchored commerce — usually a time-bound moment, sometimes an ongoing link ([future-ideas.md §3](future-ideas.md)). Urgency is a mode the data activates, not the identity.
 
 ## 2. Who sees it
 

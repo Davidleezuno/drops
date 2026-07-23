@@ -1,0 +1,121 @@
+[
+  {
+    "number": 1,
+    "title": "Last week I bought Pani Puri from this cute auntie on Tiktok",
+    "content": [
+      {
+        "type": "text",
+        "content": "But... the process was very painful "
+      }
+    ],
+    "images": [
+      {
+        "path": "assets/slide1_img1.png",
+        "width": 5857000,
+        "height": 2150025
+      },
+      {
+        "path": "assets/slide1_img2.png",
+        "width": 1970552,
+        "height": 2620301
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "number": 2,
+    "title": "Found her phone number on tiktok page",
+    "content": [
+      {
+        "type": "text",
+        "content": "Correct person?"
+      },
+      {
+        "type": "text",
+        "content": "Product Listings?"
+      }
+    ],
+    "images": [
+      {
+        "path": "assets/slide2_img1.png",
+        "width": 5528200,
+        "height": 4112324
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "number": 3,
+    "title": "",
+    "content": [],
+    "images": [
+      {
+        "path": "assets/slide3_img1.png",
+        "width": 6854296,
+        "height": 5143499
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "number": 4,
+    "title": "",
+    "content": [
+      {
+        "type": "text",
+        "content": "Order Placement"
+      },
+      {
+        "type": "text",
+        "content": "Payment Confirmation"
+      }
+    ],
+    "images": [
+      {
+        "path": "assets/slide4_img1.png",
+        "width": 4811995,
+        "height": 4991098
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "number": 5,
+    "title": "",
+    "content": [
+      {
+        "type": "text",
+        "content": "+1 LOYAL CUSTOMER"
+      }
+    ],
+    "images": [
+      {
+        "path": "assets/slide5_img1.png",
+        "width": 5310602,
+        "height": 4991099
+      }
+    ],
+    "notes": ""
+  },
+  {
+    "number": 6,
+    "title": "Very difficult to manage! \nAudience engagement\nFood Production\nPayments\nFulfillment/delivery Ops",
+    "content": [],
+    "images": [],
+    "notes": ""
+  },
+  {
+    "number": 7,
+    "title": "There are many people like Auntie rotififi selling to a growing, loyal fan base.",
+    "content": [],
+    "images": [],
+    "notes": ""
+  },
+  {
+    "number": 8,
+    "title": "HMW\nMake it super easy \nfor people with a following \nto setup storefronts for their fans?",
+    "content": [],
+    "images": [],
+    "notes": ""
+  }
+]

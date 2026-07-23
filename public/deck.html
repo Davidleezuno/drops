@@ -1,0 +1,971 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#FAF1E2">
+  <title>Drops — HitPay Build Night</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,400;1,9..144,600&display=swap" rel="stylesheet">
+  <style>
+    /* === THEME: LONG TABLE === */
+    :root {
+      --paper: #FAF1E2;
+      --paper-d: #F2E5CF;
+      --paper-vd: #E8D7B6;
+      --ink: #B53D2A;
+      --ink-deep: #8E2D1F;
+      --ink-78: rgba(181, 61, 42, 0.78);
+      --ink-50: rgba(181, 61, 42, 0.5);
+      --ink-32: rgba(181, 61, 42, 0.32);
+      --stage-bg: #8E2D1F;
+      --slide-bg: var(--paper);
+      --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* ===========================================
+       FIXED 16:9 STAGE: MANDATORY BASE STYLES
+       Include this ENTIRE file in every presentation.
+       Slides are authored at 1920×1080 and scaled as a whole.
+       =========================================== */
+
+    /* 1. Lock the browser viewport */
+    html,
+    body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: var(--stage-bg, #000);
+    }
+
+    /* 2. Full-window deck viewport */
+    .deck-viewport {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+        background: var(--stage-bg, #000);
+    }
+
+    /* 3. Fixed 16:9 design canvas.
+       JavaScript sets transform: translate(...) scale(...). */
+    .deck-stage {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        transform-origin: 0 0;
+        background: var(--slide-bg, #fff);
+    }
+
+    /* 4. Slides stack inside the fixed stage.
+       Content must be laid out at 1920×1080, not reflowed per device. */
+    .slide {
+        position: absolute;
+        inset: 0;
+        width: 1920px;
+        height: 1080px;
+        overflow: hidden;
+        display: block;
+        visibility: hidden;
+        opacity: 0;
+        pointer-events: none;
+        background: var(--slide-bg, #fff);
+    }
+
+    .slide.active,
+    .slide.visible {
+        visibility: visible;
+        opacity: 1;
+        pointer-events: auto;
+        z-index: 1;
+    }
+
+    /* 5. Keep media inside authored slide bounds */
+    img,
+    video,
+    canvas,
+    svg {
+        max-width: 100%;
+        max-height: 100%;
+    }
+
+    /* 6. Presentation chrome stays outside the slide design system */
+    .deck-controls {
+        position: fixed;
+        left: 50%;
+        bottom: 22px;
+        transform: translateX(-50%);
+        z-index: 1000;
+    }
+
+    /* 7. Print one fixed-size slide per page */
+    @media print {
+        html,
+        body {
+            width: 1920px;
+            height: auto;
+            overflow: visible;
+            background: #fff;
+        }
+
+        .deck-viewport {
+            position: static;
+            overflow: visible;
+            background: #fff;
+        }
+
+        .deck-stage {
+            position: static;
+            width: auto;
+            height: auto;
+            transform: none !important;
+            background: none;
+        }
+
+        .slide {
+            position: relative;
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+            pointer-events: auto !important;
+            width: 1920px;
+            height: 1080px;
+            break-after: page;
+            page-break-after: always;
+        }
+
+        .slide:last-child {
+            break-after: auto;
+            page-break-after: auto;
+        }
+
+        .deck-controls {
+            display: none !important;
+        }
+    }
+
+    /* 8. Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.2s !important;
+        }
+    }
+
+    /* === PAPER SURFACE === */
+    .deck-stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      z-index: 30;
+      pointer-events: none;
+      opacity: .1;
+      background-image: radial-gradient(circle at 1px 1px, var(--ink-50) .5px, transparent 1px);
+      background-size: 4px 4px;
+    }
+
+    .slide {
+      color: var(--ink);
+      font-family: "Fraunces", Georgia, serif;
+      transition: opacity 280ms ease;
+    }
+
+    .slide-pad { padding: 76px 90px 88px; }
+    .slide-pad-wide { padding: 76px 140px 88px; }
+
+    /* === UNIVERSAL CHROME === */
+    .pagenum {
+      position: absolute;
+      right: 76px;
+      bottom: 50px;
+      font-size: 24px;
+      line-height: 1;
+      font-style: italic;
+    }
+
+    .navhint {
+      position: absolute;
+      left: 76px;
+      bottom: 50px;
+      font-size: 20px;
+      line-height: 1;
+      font-style: italic;
+      opacity: .45;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      min-height: 88px;
+      padding-bottom: 22px;
+      border-bottom: 1.5px solid var(--ink);
+    }
+
+    .topbar h2,
+    .display,
+    .display-sm,
+    .card-title,
+    .course-name {
+      font-family: "Bricolage Grotesque", sans-serif;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: -.012em;
+    }
+
+    .topbar h2 { font-size: 76px; line-height: .9; }
+    .topbar span { font-size: 25px; line-height: 1; font-style: italic; padding-bottom: 7px; }
+
+    .display { font-size: 158px; line-height: .87; }
+    .display-sm { font-size: 118px; line-height: .9; }
+    .lede { font-size: 37px; line-height: 1.35; font-style: italic; }
+    .body { font-size: 30px; line-height: 1.45; font-style: italic; }
+    .body-roman { font-size: 27px; line-height: 1.42; font-style: normal; }
+    .meta { font-size: 22px; line-height: 1.3; font-style: italic; color: var(--ink-78); }
+    .micro { font-size: 18px; line-height: 1.35; font-style: italic; color: var(--ink-78); }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 14px 28px 16px;
+      border: 1.5px solid var(--ink);
+      border-radius: 999px;
+      font-size: 25px;
+      line-height: 1;
+      font-style: italic;
+      white-space: nowrap;
+    }
+
+    .rect-tag {
+      display: inline-flex;
+      align-items: center;
+      padding: 11px 18px 13px;
+      border: 1.5px solid var(--ink);
+      font-size: 22px;
+      line-height: 1;
+      font-style: italic;
+    }
+
+    .ed-row { display: flex; align-items: center; gap: 14px; font-size: 26px; font-style: italic; }
+    .ed-badge {
+      width: 48px; height: 48px;
+      border: 1.5px solid var(--ink);
+      border-radius: 50%;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 24px; font-style: italic;
+    }
+
+    /* === OUTLINED CONTENT SYSTEM === */
+    .card {
+      border: 1.5px solid var(--ink);
+      padding: 26px 28px;
+      min-width: 0;
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      padding-bottom: 15px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--ink-32);
+      font-size: 19px;
+      font-style: italic;
+    }
+
+    .card-title { font-size: 43px; line-height: .95; margin-bottom: 18px; }
+    .card-foot {
+      padding-top: 15px;
+      margin-top: 22px;
+      border-top: 1px dashed var(--ink-32);
+      font-size: 19px;
+      font-style: italic;
+    }
+
+    .photo-frame {
+      border: 1.5px solid var(--ink);
+      padding: 12px;
+      background: var(--paper);
+      overflow: hidden;
+    }
+
+    .photo-frame img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .duotone { filter: grayscale(1) sepia(1) saturate(2.15) hue-rotate(326deg) contrast(1.04); opacity: .9; }
+    .contain { object-fit: contain !important; }
+
+    .caption {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 14px;
+      font-size: 20px;
+      font-style: italic;
+    }
+
+    /* === ENTRANCE MOTION === */
+    .reveal {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 650ms var(--ease), transform 650ms var(--ease);
+    }
+
+    .visible .reveal { opacity: 1; transform: none; }
+    .visible .d1 { transition-delay: 90ms; }
+    .visible .d2 { transition-delay: 180ms; }
+    .visible .d3 { transition-delay: 270ms; }
+    .visible .d4 { transition-delay: 360ms; }
+
+    /* === SLIDE 1: HOOK === */
+    .hook-grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 90px;
+      height: 800px;
+      align-items: center;
+    }
+
+    .hook-copy .kicker { font-size: 30px; font-style: italic; margin-bottom: 42px; }
+    .hook-copy h1 {
+      font: 800 112px/.88 "Bricolage Grotesque", sans-serif;
+      text-transform: uppercase;
+      letter-spacing: -.014em;
+      margin-bottom: 42px;
+    }
+
+    .hook-images { position: relative; height: 800px; }
+    .profile-card { position: absolute; right: 0; top: 12px; width: 690px; height: 350px; }
+    .food-card { position: absolute; left: 40px; bottom: 0; width: 330px; height: 440px; }
+    .follower-stamp {
+      position: absolute; right: 0; bottom: 74px; width: 340px;
+      border-top: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink);
+      padding: 23px 0;
+    }
+    .follower-stamp b { display: block; font: 800 72px/.9 "Bricolage Grotesque", sans-serif; }
+    .follower-stamp i { font-size: 26px; }
+
+    /* === STORY SCREENSHOTS === */
+    .story-grid { display: grid; grid-template-columns: 560px 1fr; gap: 78px; margin-top: 44px; height: 730px; }
+    .story-grid.reverse { grid-template-columns: 1fr 640px; }
+    .story-grid .photo-frame { height: 690px; }
+    .story-copy { display: flex; flex-direction: column; justify-content: center; }
+    .story-copy .display-sm { margin-bottom: 34px; }
+    .chat-ledger { margin-top: 38px; border-top: 1.5px solid var(--ink); }
+    .chat-row {
+      display: grid; grid-template-columns: 90px 1fr auto; gap: 22px;
+      align-items: center; padding: 19px 0; border-bottom: 1px solid var(--ink-32);
+      font-size: 24px; font-style: italic;
+    }
+    .chat-row b { font-family: "Bricolage Grotesque", sans-serif; font-size: 22px; font-style: normal; text-transform: uppercase; }
+
+    /* === CATALOGUE === */
+    .catalogue-layout { display: grid; grid-template-columns: 800px 1fr; gap: 70px; margin-top: 42px; }
+    .catalogue-layout .photo-frame { height: 700px; }
+    .price-list { border-top: 1.5px solid var(--ink); margin-top: 58px; }
+    .price-row {
+      display: grid; grid-template-columns: 100px 1fr auto; gap: 24px;
+      align-items: baseline; padding: 28px 0; border-bottom: 1px solid var(--ink-32);
+    }
+    .price-row span { font-size: 25px; font-style: italic; }
+    .price-row b { font: 800 40px/1 "Bricolage Grotesque", sans-serif; text-transform: uppercase; }
+    .price-row em { font: 600 46px/1 "Fraunces", serif; }
+
+    /* === LOYAL CUSTOMER === */
+    .loyal-layout { display: grid; grid-template-columns: 900px 1fr; gap: 90px; margin-top: 44px; }
+    .loyal-layout .photo-frame { height: 690px; }
+    .quote-mark { font: 400 italic 330px/.7 "Fraunces", serif; }
+    .loyal-quote { font: 700 74px/.96 "Bricolage Grotesque", sans-serif; text-transform: uppercase; letter-spacing: -.01em; }
+    .loyal-thanks { border-top: 1.5px solid var(--ink); margin-top: 42px; padding-top: 24px; font-size: 34px; font-style: italic; }
+
+    /* === OPERATIONS / PATTERN === */
+    .ops-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 72px; }
+    .ops-grid .card { min-height: 345px; display: flex; flex-direction: column; justify-content: space-between; }
+    .ops-num { font: 400 italic 104px/.8 "Fraunces", serif; }
+    .ops-grid .card-title { font-size: 34px; }
+    .equation {
+      margin-top: 54px; padding: 24px 0; border-top: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink);
+      font: 700 46px/1 "Bricolage Grotesque", sans-serif; text-transform: uppercase;
+      display: flex; justify-content: space-between;
+    }
+
+    .pattern-layout { display: grid; grid-template-columns: 1fr 510px; gap: 80px; margin-top: 56px; }
+    .pattern-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .pattern-stats .card { height: 250px; }
+    .pattern-stats b { display: block; font: 800 46px/.95 "Bricolage Grotesque", sans-serif; text-transform: uppercase; margin-bottom: 22px; }
+    .big-people { font: 400 italic 390px/.75 "Fraunces", serif; text-align: center; }
+
+    /* === HMW / DEMO / CLOSE === */
+    .statement {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 76px 150px 110px;
+    }
+    .statement .ed-row { margin-bottom: 65px; }
+    .statement h2 {
+      font: 800 132px/.88 "Bricolage Grotesque", sans-serif;
+      text-transform: uppercase; letter-spacing: -.014em; max-width: 1540px;
+    }
+    .statement .lede { max-width: 980px; margin-top: 46px; }
+    .statement .rule { width: 100%; border-top: 1.5px solid var(--ink); margin-top: 58px; padding-top: 24px; display: flex; justify-content: space-between; }
+
+    /* === MEET DROPS === */
+    .meet-layout { display: grid; grid-template-columns: 720px 1fr; gap: 74px; margin-top: 44px; }
+    .product-stack { position: relative; height: 700px; }
+    .product-stack .one { position: absolute; left: 0; top: 0; width: 520px; height: 640px; }
+    .product-stack .two { position: absolute; right: 0; top: 82px; width: 390px; height: 560px; }
+    .process-list { border-top: 1.5px solid var(--ink); margin-top: 42px; }
+    .process-row {
+      display: grid; grid-template-columns: 60px 1fr; gap: 22px;
+      padding: 25px 0; border-bottom: 1px solid var(--ink-32);
+    }
+    .process-row b { font: 800 35px/1 "Bricolage Grotesque", sans-serif; text-transform: uppercase; }
+    .process-row span { font-size: 26px; line-height: 1.3; font-style: italic; }
+
+    .demo-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; margin-top: 75px; }
+    .demo-step { border-top: 1.5px solid var(--ink); padding-top: 20px; }
+    .demo-step b { display: block; font: 800 40px/1 "Bricolage Grotesque", sans-serif; text-transform: uppercase; margin: 20px 0; }
+    .demo-step span { font-size: 25px; font-style: italic; }
+
+    /* === MARKET === */
+    .market-layout { display: grid; grid-template-columns: 650px 1fr; gap: 72px; margin-top: 52px; }
+    .market-number { border-right: 1.5px solid var(--ink); padding-right: 64px; }
+    .market-number b { display: block; font: 400 italic 200px/.82 "Fraunces", serif; letter-spacing: -.035em; }
+    .market-number h3 { font: 800 54px/.95 "Bricolage Grotesque", sans-serif; text-transform: uppercase; margin: 32px 0 24px; }
+    .audience-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+    .audience-grid .card { height: 250px; }
+    .audience-grid .card-title { font-size: 32px; }
+
+    /* === ARCHITECTURE === */
+    .architecture { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 52px; }
+    .architecture .card { height: 370px; }
+    .architecture .card-title { font-size: 38px; }
+    .arrowline { display: flex; justify-content: space-between; align-items: center; margin: 38px 0 0; font-size: 24px; font-style: italic; }
+    .race-proof {
+      margin-top: 34px; padding: 25px 0; border-top: 1.5px solid var(--ink); border-bottom: 1.5px solid var(--ink);
+      display: grid; grid-template-columns: 260px repeat(4, 1fr); align-items: center; gap: 26px;
+    }
+    .race-proof h3 { font: 800 31px/1 "Bricolage Grotesque", sans-serif; text-transform: uppercase; }
+    .race-proof b { display: block; font: 600 39px/1 "Fraunces", serif; }
+    .race-proof span { font-size: 19px; font-style: italic; }
+
+    /* === Q&A APPENDIX === */
+    .qa-layout { display: grid; grid-template-columns: 680px 1fr; gap: 74px; margin-top: 52px; }
+    .qa-question {
+      font: 800 69px/.94 "Bricolage Grotesque", sans-serif;
+      text-transform: uppercase; letter-spacing: -.012em;
+      padding-right: 56px; border-right: 1.5px solid var(--ink);
+    }
+    .qa-answer { display: flex; flex-direction: column; gap: 25px; }
+    .qa-answer p { font-size: 29px; line-height: 1.39; font-style: italic; }
+    .pushback { margin-top: 8px; border-top: 1px dashed var(--ink-32); padding-top: 23px; }
+    .pushback b { display: block; font: 800 20px/1 "Bricolage Grotesque", sans-serif; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 12px; }
+    .pushback span { font-size: 27px; line-height: 1.35; font-style: italic; }
+
+    /* === EDITING + PRESENTER CONTROLS === */
+    .edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+    .edit-toggle {
+      position: fixed; top: 16px; left: 16px; z-index: 10001;
+      opacity: 0; pointer-events: none; transition: opacity .3s ease;
+      border: 1px solid var(--paper); background: var(--ink-deep); color: var(--paper);
+      border-radius: 999px; padding: 9px 14px; font: 600 13px/1 "Fraunces", serif;
+    }
+    .edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+    .editing [data-edit-id] { outline: 2px dashed var(--ink-50); outline-offset: 4px; cursor: text; }
+    .toast {
+      position: fixed; left: 50%; top: 24px; transform: translateX(-50%);
+      z-index: 10002; background: var(--ink-deep); color: var(--paper);
+      border: 1px solid var(--paper); border-radius: 999px; padding: 10px 18px;
+      font: 400 italic 15px/1 "Fraunces", serif; opacity: 0; transition: opacity .2s;
+    }
+    .toast.show { opacity: 1; }
+  </style>
+</head>
+<body>
+  <div class="deck-viewport">
+    <main class="deck-stage" id="deckStage" aria-live="polite">
+      <!-- === 01 / HOOK === -->
+      <section class="slide slide-pad active" data-section="main" aria-label="Hook">
+        <!-- Speaker note: Start conversationally. This really happened last week. -->
+        <div class="hook-grid">
+          <div class="hook-copy">
+            <div class="kicker reveal" data-edit-id="s1-kicker">This is Rotififi. She has 9,295 followers.</div>
+            <h1 class="reveal d1" data-edit-id="s1-title">Last week I bought pani puri from this cute auntie on TikTok.</h1>
+            <p class="lede reveal d2" data-edit-id="s1-lede">But... the process was very painful.</p>
+          </div>
+          <div class="hook-images">
+            <figure class="photo-frame profile-card reveal d1"><img class="duotone contain" src="/deck-assets/rotififi-profile.png" alt="Rotififi TikTok profile"></figure>
+            <figure class="photo-frame food-card reveal d2"><img class="duotone" src="/deck-assets/pani-puri.png" alt="Pani puri"></figure>
+            <div class="follower-stamp reveal d3"><b>9,295</b><i>followers ready to buy</i></div>
+          </div>
+        </div>
+        <div class="navhint">← → navigate · Q appendix · E edit</div><div class="pagenum">01 / 13</div>
+      </section>
+
+      <!-- === 02 / THE CHASE === -->
+      <section class="slide slide-pad" data-section="main" aria-label="The WhatsApp chase">
+        <div class="topbar"><h2 class="reveal" data-edit-id="s2-top">Found her phone number on TikTok</h2><span class="reveal d1">Then moved the whole order to WhatsApp.</span></div>
+        <div class="story-grid">
+          <figure class="photo-frame reveal d1"><img class="duotone contain" src="/deck-assets/whatsapp-chase.png" alt="WhatsApp ordering conversation"></figure>
+          <div class="story-copy">
+            <h3 class="display-sm reveal d1" data-edit-id="s2-title">“Correct person?”</h3>
+            <p class="body reveal d2" data-edit-id="s2-body">Product listings? Can I order? Do you handle delivery?</p>
+            <div class="chat-ledger reveal d3">
+              <div class="chat-row"><b>08:52</b><span>Found her number</span><em>Identity?</em></div>
+              <div class="chat-row"><b>11:50</b><span>Asked to order</span><em>Availability?</em></div>
+              <div class="chat-row"><b>12:05</b><span>Asked about delivery</span><em>Fulfilment?</em></div>
+            </div>
+          </div>
+        </div>
+        <div class="navhint">← → to navigate</div><div class="pagenum">02 / 13</div>
+      </section>
+
+      <!-- === 03 / CATALOGUE === -->
+      <section class="slide slide-pad" data-section="main" aria-label="The catalogue is a photo">
+        <div class="topbar"><h2 class="reveal" data-edit-id="s3-top">Product listings?</h2><span class="reveal d1">The catalogue is a photo sent in WhatsApp.</span></div>
+        <div class="catalogue-layout">
+          <figure class="photo-frame reveal d1"><img class="duotone contain" src="/deck-assets/catalogue.png" alt="Pani puri menu image in WhatsApp"></figure>
+          <div>
+            <h3 class="display-sm reveal d1" data-edit-id="s3-title">Set A or Set B?</h3>
+            <div class="price-list reveal d2">
+              <div class="price-row"><span>01</span><b>Set A · 35 puri</b><em>$35</em></div>
+              <div class="price-row"><span>02</span><b>Set B · 70 puri</b><em>$65</em></div>
+            </div>
+            <p class="body reveal d3" style="margin-top:35px" data-edit-id="s3-body">A photo is the menu. WhatsApp is the storefront.</p>
+          </div>
+        </div>
+        <div class="navhint">← → to navigate</div><div class="pagenum">03 / 13</div>
+      </section>
+
+      <!-- === 04 / ORDER AND PAY === -->
+      <section class="slide slide-pad" data-section="main" aria-label="Order and payment by hand">
+        <div class="topbar"><h2 class="reveal" data-edit-id="s4-top">Order placement + payment confirmation</h2><span class="reveal d1">All done by hand.</span></div>
+        <div class="story-grid reverse">
+          <div class="story-copy">
+            <h3 class="display-sm reveal d1" data-edit-id="s4-title">Delivery is $13.</h3>
+            <p class="body reveal d2" data-edit-id="s4-body">“Can I have Set A?” “6pm tomorrow possible?” “I PayLah this number?” Then send the payment screenshot.</p>
+            <div class="equation reveal d3"><span>$35 FOOD</span><span>+</span><span>$13 DELIVERY</span><span>=</span><span>$48 SCREENSHOT</span></div>
+          </div>
+          <figure class="photo-frame reveal d1"><img class="duotone contain" src="/deck-assets/order-pay.png" alt="WhatsApp order and PayLah payment screenshot"></figure>
+        </div>
+        <div class="navhint">← → to navigate</div><div class="pagenum">04 / 13</div>
+      </section>
+
+      <!-- === 05 / LOYAL CUSTOMER === -->
+      <section class="slide slide-pad" data-section="main" aria-label="A loyal customer">
+        <div class="topbar"><h2 class="reveal" data-edit-id="s5-top">+1 loyal customer</h2><span class="reveal d1">The food was very yummy!</span></div>
+        <div class="loyal-layout">
+          <figure class="photo-frame reveal d1"><img class="duotone contain" src="/deck-assets/loyal-customer.png" alt="Family enjoying the pani puri"></figure>
+          <div class="reveal d2" style="align-self:center">
+            <div class="quote-mark">“</div>
+            <div class="loyal-quote" data-edit-id="s5-quote">Very yummy!</div>
+            <div class="loyal-thanks" data-edit-id="s5-thanks">“Awwww thank you so much!!!”</div>
+          </div>
+        </div>
+        <div class="navhint">← → to navigate</div><div class="pagenum">05 / 13</div>
+      </section>
+
+      <!-- === 06 / OPERATIONS === -->
+      <section class="slide slide-pad" data-section="main" aria-label="Seller operations burden">
+        <div class="topbar"><h2 class="reveal" data-edit-id="s6-top">Very difficult to manage!</h2><span class="reveal d1">And she still has to make the food.</span></div>
+        <div class="ops-grid">
+          <article class="card reveal d1"><div class="ops-num">01</div><div><h3 class="card-title">Engagement</h3><p class="body-roman">Reply while the audience is hot.</p></div></article>
+          <article class="card reveal d2"><div class="ops-num">02</div><div><h3 class="card-title">Production</h3><p class="body-roman">Know what is actually left.</p></div></article>
+          <article class="card reveal d3"><div class="ops-num">03</div><div><h3 class="card-title">Payments</h3><p class="body-roman">Match every screenshot to an order.</p></div></article>
+          <article class="card reveal d4"><div class="ops-num">04</div><div><h3 class="card-title">Fulfilment</h3><p class="body-roman">Turn chat into a packing route.</p></div></article>
+        </div>
+        <div class="equation reveal d4"><span>ONE PERSON</span><span>÷</span><span>FOUR JOBS</span><span>=</span><span>CHAOS AT THE BEST MOMENT</span></div>
+        <div class="navhint">← → to navigate</div><div class="pagenum">06 / 13</div>
+      </section>
+
+      <!-- === 07 / PATTERN === -->
+      <section class="slide slide-pad-wide" data-section="main" aria-label="A wider seller pattern">
+        <div class="topbar"><h2 class="reveal" data-edit-id="s7-top">There are many people like Auntie Rotififi</h2><span class="reveal d1">Selling to a growing, loyal fan base.</span></div>
+        <div class="pattern-layout">
+          <div class="pattern-stats">
+            <article class="card reveal d1"><b>Home F&amp;B</b><p class="body-roman">Tonight’s bake, weekend menu, family kitchen.</p></article>
+            <article class="card reveal d2"><b>Live sellers</b><p class="body-roman">A fast-moving batch sold while the stream is live.</p></article>
+            <article class="card reveal d3"><b>Group buys</b><p class="body-roman">One organiser, one window, many claims.</p></article>
+            <article class="card reveal d4"><b>Creator drops</b><p class="body-roman">Merch, collabs, pop-ups and limited runs.</p></article>
+          </div>
+          <div>
+            <div class="big-people reveal d1">1</div>
+            <p class="lede reveal d2" style="text-align:center" data-edit-id="s7-lede">They already have people who want to buy from them.</p>
+          </div>
+        </div>
+        <div class="navhint">← → to navigate</div><div class="pagenum">07 / 13</div>
+      </section>
+
+      <!-- === 08 / HMW === -->
+      <section class="slide statement" data-section="main" aria-label="How might we">
+        <div class="ed-row reveal"><span class="ed-badge">8</span><span>Our question</span></div>
+        <h2 class="reveal d1" data-edit-id="s8-title">How might we make it super easy for people with a following to setup storefronts for their fans?</h2>
+        <p class="lede reveal d2" data-edit-id="s8-lede">Without making them build a catalogue or learn a new way to sell.</p>
+        <div class="rule reveal d3"><span class="meta">ONE PHOTO</span><span class="meta">ONE STOREFRONT</span></div>
+        <div class="navhint">← → to navigate</div><div class="pagenum">08 / 13</div>
+      </section>
+
+      <!-- === 09 / MEET DROPS === -->
+      <section class="slide slide-pad" data-section="main" aria-label="Meet Drops">
+        <div class="topbar"><h2 class="reveal" data-edit-id="s9-top">Meet Drops</h2><span class="reveal d1">Photo → live storefront in 60 seconds.</span></div>
+        <div class="meet-layout">
+          <div>
+            <h3 class="display-sm reveal d1" data-edit-id="s9-title">A shop that is theirs.</h3>
+            <p class="body reveal d2" style="margin-top:32px" data-edit-id="s9-body">Seller uploads the photo they already send. Buyer walks into a shop instead of filling a form.</p>
+            <div class="process-list reveal d3">
+              <div class="process-row"><b>01</b><span>Upload the menu or product photos.</span></div>
+              <div class="process-row"><b>02</b><span>Confirm stock, window and fulfilment.</span></div>
+              <div class="process-row"><b>03</b><span>Share one link everywhere.</span></div>
+            </div>
+          </div>
+          <div class="product-stack">
+            <figure class="photo-frame one reveal d1"><img class="duotone contain" src="/deck-assets/drops-upload.png" alt="Drops photo upload flow"></figure>
+            <figure class="photo-frame two reveal d2"><img class="duotone contain" src="/deck-assets/drops-storefront.png" alt="Drops live storefront"></figure>
+          </div>
+        </div>
+        <div class="navhint">← → to navigate</div><div class="pagenum">09 / 13</div>
+      </section>
+
+      <!-- === 10 / LIVE DEMO === -->
+      <section class="slide statement" data-section="main" aria-label="Live demo">
+        <div class="ed-row reveal"><span class="ed-badge">10</span><span>Live demo</span></div>
+        <h2 class="reveal d1" data-edit-id="s10-title">Let’s build a store!</h2>
+        <div class="rule reveal d4"><span class="meta">REAL HITPAY SANDBOX CHECKOUT</span><span class="meta">NO REAL MONEY MOVES</span></div>
+        <div class="navhint">← → to navigate</div><div class="pagenum">10 / 13</div>
+      </section>
+
+      <!-- === 11 / WHO + WHY === -->
+      <section class="slide slide-pad" data-section="main" aria-label="Who this is for and why it matters">
+        <div class="topbar"><h2 class="reveal" data-edit-id="s11-top">Who this is for + why it matters</h2><span class="reveal d1">People already selling to their followers.</span></div>
+        <div class="market-layout">
+          <div class="market-number reveal d1">
+            <b>US$1.3B</b>
+            <h3 data-edit-id="s11-market">Singapore live-commerce sales opportunity</h3>
+            <p class="body" data-edit-id="s11-why">For HitPay: an acquisition wedge + payment volume. These sellers use PayNow screenshots today.</p>
+            <p class="micro" style="margin-top:30px">Source: DBS Research, 11 Aug 2025 · estimate for 2025</p>
+          </div>
+          <div class="audience-grid">
+            <article class="card reveal d1"><div class="card-top"><span>01</span><span>Food</span></div><h3 class="card-title">Home F&amp;B</h3><p class="body-roman">Bakers, cooks and weekend menus.</p></article>
+            <article class="card reveal d2"><div class="card-top"><span>02</span><span>Social</span></div><h3 class="card-title">Live sellers</h3><p class="body-roman">TikTok, Instagram and Facebook sellers.</p></article>
+            <article class="card reveal d3"><div class="card-top"><span>03</span><span>Community</span></div><h3 class="card-title">Group buys</h3><p class="body-roman">Audience-led batches and import runs.</p></article>
+            <article class="card reveal d4"><div class="card-top"><span>04</span><span>Limited</span></div><h3 class="card-title">Pop-ups</h3><p class="body-roman">Creators, merch and collaborative drops.</p></article>
+          </div>
+        </div>
+        <div class="navhint">← → to navigate</div><div class="pagenum">11 / 13</div>
+      </section>
+
+      <!-- === 12 / REALTIME === -->
+      <section class="slide slide-pad" data-section="main" aria-label="How Supabase Realtime works">
+        <div class="topbar"><h2 class="reveal" data-edit-id="s12-top">How the live layer works</h2><span class="reveal d1">One channel keeps every buyer and seller in the same moment.</span></div>
+        <div class="architecture">
+          <article class="card reveal d1"><div class="card-top"><span>Client</span><span>01</span></div><h3 class="card-title">Connect once</h3><p class="body-roman">Each storefront opens a secure Supabase Realtime channel.</p><div class="card-foot">WebSocket connection</div></article>
+          <article class="card reveal d2"><div class="card-top"><span>Server</span><span>02</span></div><h3 class="card-title">Emit trusted events</h3><p class="body-roman">Payments and durable updates always originate on the server.</p><div class="card-foot">Service-role protected</div></article>
+          <article class="card reveal d3"><div class="card-top"><span>Supabase</span><span>03</span></div><h3 class="card-title">Fan out instantly</h3><p class="body-roman">Realtime pushes the event to every subscribed screen.</p><div class="card-foot">Everyone stays in sync</div></article>
+        </div>
+        <div class="race-proof reveal d4">
+          <h3>Two realtime paths</h3>
+          <div><b>DB</b><span>Stock</span></div>
+          <div><b>→</b><span>Postgres Changes</span></div>
+          <div><b>LIVE</b><span>Movement + reactions</span></div>
+          <div><b>→</b><span>Realtime Broadcast</span></div>
+        </div>
+        <div class="navhint">← → to navigate</div><div class="pagenum">12 / 13</div>
+      </section>
+
+      <!-- === 13 / CLOSE === -->
+      <section class="slide statement" data-section="main" aria-label="Closing thesis">
+        <div class="ed-row reveal"><span class="ed-badge">13</span><span>The thesis</span></div>
+        <h2 class="reveal d1" data-edit-id="s13-title">One photo. One link. No more screenshot matching.</h2>
+        <p class="lede reveal d2" data-edit-id="s13-lede">A shop that is theirs. Powered by HitPay.</p>
+        <div class="rule reveal d3"><span class="pill">Photo → live in 60 seconds</span><span class="pill">Q for appendix</span></div>
+        <div class="navhint">Q opens prepared objections</div><div class="pagenum">13 / 13</div>
+      </section>
+
+      <!-- === Q1 / FEATURE OBJECTION === -->
+      <section class="slide slide-pad" data-section="appendix" aria-label="Q and A: HitPay feature objection">
+        <div class="topbar"><h2 class="reveal">Q&amp;A appendix</h2><span class="reveal d1">HitPay store builder / payment links</span></div>
+        <div class="qa-layout">
+          <h3 class="qa-question reveal d1">“Isn’t this just a thin wrapper on what HitPay already has?”</h3>
+          <div class="qa-answer reveal d2">
+            <p>A store builder assumes a permanent catalogue and a business willing to configure it. Drops is a different object: a batch that is gone tonight, sold by a person who would never set up a store.</p>
+            <p>It is an on-ramp, not a competitor. These sellers use PayNow screenshots today, completely off HitPay’s rails. Drops pulls every sale into HitPay payment requests.</p>
+            <div class="pushback"><b>If pushed</b><span>“The store builder fixes the shopfront. It leaves manual order capture and screenshot reconciliation—which is most of her actual pain.”</span></div>
+          </div>
+        </div>
+        <div class="navhint">Esc returns to close</div><div class="pagenum">Q1 / 7</div>
+      </section>
+
+      <!-- === Q2 / BUSINESS MODEL === -->
+      <section class="slide slide-pad" data-section="appendix" aria-label="Q and A: business model">
+        <div class="topbar"><h2 class="reveal">Business model</h2><span class="reveal d1">Volume + acquisition</span></div>
+        <div class="qa-layout">
+          <h3 class="qa-question reveal d1">“How does this make money?”</h3>
+          <div class="qa-answer reveal d2">
+            <p>It rides the same engine as HitPay: payment volume. Every drop is born as HitPay payment requests, driving GMV and take-rate from micro-sellers who transact off-platform today.</p>
+            <p>Standalone, the natural extension is a small SaaS tier for weekly power sellers. For HitPay, the immediate value is a new acquisition hook plus repeat volume.</p>
+            <div class="pushback"><b>Keep the answer honest</b><span>Do not invent a fee model on the spot. Frame it as the volume-and-acquisition wedge a payments company actually values.</span></div>
+          </div>
+        </div>
+        <div class="navhint">Esc returns to close</div><div class="pagenum">Q2 / 7</div>
+      </section>
+
+      <!-- === Q3 / PAID LATE === -->
+      <section class="slide slide-pad" data-section="appendix" aria-label="Q and A: oversell and refunds">
+        <div class="topbar"><h2 class="reveal">The last-unit race</h2><span class="reveal d1">Why PAID_LATE exists</span></div>
+        <div class="qa-layout">
+          <h3 class="qa-question reveal d1">“A customer paid and got nothing. Why not reserve stock?”</h3>
+          <div class="qa-answer reveal d2">
+            <p>We built and rejected TTL holds. During a 90-second rush, an abandoned five-minute hold can block inventory from a real paying buyer and cause underselling.</p>
+            <p>Instead, only a validated paid webhook decrements stock in one guarded atomic write. Exactly one buyer wins the last unit; rare stragglers are flagged and refunded through HitPay.</p>
+            <div class="pushback"><b>Proof, not theory</b><span>“race:proof runs 12 concurrent real sandbox payments: exactly 4 PAID, 8 PAID_LATE, and stock never exceeds 4.”</span></div>
+          </div>
+        </div>
+        <div class="navhint">Esc returns to close</div><div class="pagenum">Q3 / 7</div>
+      </section>
+
+      <!-- === Q4 / ADOPTION === -->
+      <section class="slide slide-pad" data-section="appendix" aria-label="Q and A: seller adoption">
+        <div class="topbar"><h2 class="reveal">Seller adoption</h2><span class="reveal d1">Do not change the workflow—delete work from it.</span></div>
+        <div class="qa-layout">
+          <h3 class="qa-question reveal d1">“WhatsApp already works. Will an auntie switch?”</h3>
+          <div class="qa-answer reveal d2">
+            <p>She uploads the exact photo she already sends. There is no catalogue project, no settings maze, and no new distribution channel to learn.</p>
+            <p>The output is one link for the same TikTok bio and WhatsApp status she already uses. Buyers need no app and no account.</p>
+            <div class="pushback"><b>The switching-cost line</b><span>“We are not changing how she finds customers. We are deleting the ten messages and screenshot matching after they arrive.”</span></div>
+          </div>
+        </div>
+        <div class="navhint">Esc returns to close</div><div class="pagenum">Q4 / 7</div>
+      </section>
+
+      <!-- === Q5 / 3D === -->
+      <section class="slide slide-pad" data-section="appendix" aria-label="Q and A: 3D storefront">
+        <div class="topbar"><h2 class="reveal">The 3D storefront</h2><span class="reveal d1">Charm is not the moat.</span></div>
+        <div class="qa-layout">
+          <h3 class="qa-question reveal d1">“Isn’t the 3D shop a gimmick anyone can copy?”</h3>
+          <div class="qa-answer reveal d2">
+            <p>The 3D gives a one-person seller identity and a live social feeling that a checkout form cannot. It earns attention, but it is not the defensibility claim.</p>
+            <p>The wedge is off-platform reach plus 60-second setup plus self-reconciling payments. The roadmap compounds that with returning-buyer memory and split settlement.</p>
+            <div class="pushback"><b>Say it plainly</b><span>“The moat is not the polygons. It is turning any audience, on any channel, into reconciled commerce.”</span></div>
+          </div>
+        </div>
+        <div class="navhint">Esc returns to close</div><div class="pagenum">Q5 / 7</div>
+      </section>
+
+      <!-- === Q6 / DISTRIBUTION === -->
+      <section class="slide slide-pad" data-section="appendix" aria-label="Q and A: distribution">
+        <div class="topbar"><h2 class="reveal">Distribution</h2><span class="reveal d1">The product carries its own invitation.</span></div>
+        <div class="qa-layout">
+          <h3 class="qa-question reveal d1">“How do you reach these sellers?”</h3>
+          <div class="qa-answer reveal d2">
+            <p>The drop link is the growth loop. Every buyer walks into a branded Drops storefront and sees where it came from.</p>
+            <p>These sellers cluster in the same home-F&amp;B and live-selling communities, following and reposting one another. Seed a handful of creators and each drop becomes a billboard for the next seller.</p>
+            <div class="pushback"><b>Distribution thesis</b><span>Seller-to-seller discovery is embedded in buyer traffic, not purchased separately.</span></div>
+          </div>
+        </div>
+        <div class="navhint">Esc returns to close</div><div class="pagenum">Q6 / 7</div>
+      </section>
+
+      <!-- === Q7 / SCOPE === -->
+      <section class="slide slide-pad" data-section="appendix" aria-label="Q and A: always-on stores">
+        <div class="topbar"><h2 class="reveal">Scope</h2><span class="reveal d1">The wedge is not the ceiling.</span></div>
+        <div class="qa-layout">
+          <h3 class="qa-question reveal d1">“Only drops? Sellers also want an always-on store.”</h3>
+          <div class="qa-answer reveal d2">
+            <p>Always-on is the same object with the window turned off. We lead with the drop because it is the seller’s moment of highest pain, urgency and conversion.</p>
+            <p>That sharp use case earns adoption. The same catalogue, buyer identity, fulfilment and payment rails can expand into ongoing commerce later.</p>
+            <div class="pushback"><b>The scope line</b><span>“Drops is the wedge, not the ceiling. We start where existing store builders are weakest.”</span></div>
+          </div>
+        </div>
+        <div class="navhint">Esc returns to close</div><div class="pagenum">Q7 / 7</div>
+      </section>
+    </main>
+  </div>
+
+  <div class="edit-hotzone" aria-hidden="true"></div>
+  <button class="edit-toggle" id="editToggle" type="button" title="Edit mode (E)">Edit</button>
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    /* === PRESENTATION CONTROLLER === */
+    class SlidePresentation {
+      constructor() {
+        this.slides = Array.from(document.querySelectorAll(".slide"));
+        this.currentSlide = 0;
+        this.mainEnd = this.slides.findLastIndex((slide) => slide.dataset.section === "main");
+        this.appendixStart = this.slides.findIndex((slide) => slide.dataset.section === "appendix");
+        this.stage = document.getElementById("deckStage");
+        this.touchStartX = 0;
+        this.wheelLock = false;
+        this.setupStageScale();
+        this.setupKeyboardNav();
+        this.setupTouchNav();
+        this.setupWheelNav();
+        const initialSlide = Number.parseInt(location.hash.slice(1), 10);
+        this.showSlide(Number.isFinite(initialSlide) ? initialSlide - 1 : 0);
+      }
+
+      setupStageScale() {
+        const scale = () => {
+          const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+          const x = (window.innerWidth - 1920 * factor) / 2;
+          const y = (window.innerHeight - 1080 * factor) / 2;
+          this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+        };
+        scale();
+        window.addEventListener("resize", scale);
+        window.addEventListener("hashchange", () => {
+          const hashSlide = Number.parseInt(location.hash.slice(1), 10);
+          if (Number.isFinite(hashSlide) && hashSlide - 1 !== this.currentSlide) {
+            this.showSlide(hashSlide - 1);
+          }
+        });
+      }
+
+      setupKeyboardNav() {
+        document.addEventListener("keydown", (event) => {
+          if (document.body.classList.contains("editing")) return;
+          if (["ArrowRight", "ArrowDown", " ", "PageDown"].includes(event.key)) {
+            event.preventDefault(); this.next();
+          } else if (["ArrowLeft", "ArrowUp", "PageUp"].includes(event.key)) {
+            event.preventDefault(); this.previous();
+          } else if (event.key === "Home") {
+            event.preventDefault(); this.showSlide(0);
+          } else if (event.key === "End") {
+            event.preventDefault(); this.showSlide(this.mainEnd);
+          } else if (event.key.toLowerCase() === "q") {
+            event.preventDefault(); this.showSlide(this.appendixStart);
+          } else if (event.key === "Escape" && this.currentSlide >= this.appendixStart) {
+            event.preventDefault(); this.showSlide(this.mainEnd);
+          }
+        });
+      }
+
+      setupTouchNav() {
+        document.addEventListener("touchstart", (event) => {
+          this.touchStartX = event.changedTouches[0].screenX;
+        }, { passive: true });
+        document.addEventListener("touchend", (event) => {
+          const delta = event.changedTouches[0].screenX - this.touchStartX;
+          if (Math.abs(delta) < 55) return;
+          delta < 0 ? this.next() : this.previous();
+        }, { passive: true });
+      }
+
+      setupWheelNav() {
+        document.addEventListener("wheel", (event) => {
+          if (this.wheelLock || Math.abs(event.deltaY) < 20) return;
+          this.wheelLock = true;
+          event.deltaY > 0 ? this.next() : this.previous();
+          window.setTimeout(() => { this.wheelLock = false; }, 450);
+        }, { passive: true });
+      }
+
+      showSlide(index) {
+        this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+        this.slides.forEach((slide, slideIndex) => {
+          slide.classList.toggle("active", slideIndex === this.currentSlide);
+          slide.classList.toggle("visible", slideIndex === this.currentSlide);
+        });
+        const label = this.slides[this.currentSlide].getAttribute("aria-label") || `Slide ${this.currentSlide + 1}`;
+        document.title = `${label} — Drops`;
+        history.replaceState(null, "", `#${this.currentSlide + 1}`);
+      }
+
+      next() { this.showSlide(this.currentSlide + 1); }
+      previous() { this.showSlide(this.currentSlide - 1); }
+    }
+
+    /* === INLINE EDITOR === */
+    class InlineEditor {
+      constructor() {
+        this.isActive = false;
+        this.nodes = Array.from(document.querySelectorAll("[data-edit-id]"));
+        this.restore();
+      }
+
+      restore() {
+        this.nodes.forEach((node) => {
+          const saved = localStorage.getItem(`drops-deck:${node.dataset.editId}`);
+          if (saved !== null) node.innerHTML = saved;
+        });
+      }
+
+      toggleEditMode() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle("editing", this.isActive);
+        editToggle.classList.toggle("active", this.isActive);
+        editToggle.textContent = this.isActive ? "Done" : "Edit";
+        this.nodes.forEach((node) => node.setAttribute("contenteditable", String(this.isActive)));
+        showToast(this.isActive ? "Edit mode on · Ctrl+S downloads a copy" : "Edits saved in this browser");
+      }
+
+      save() {
+        this.nodes.forEach((node) => localStorage.setItem(`drops-deck:${node.dataset.editId}`, node.innerHTML));
+      }
+
+      download() {
+        this.save();
+        const blob = new Blob(["<!doctype html>\n" + document.documentElement.outerHTML], { type: "text/html" });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "drops-deck-edited.html";
+        link.click();
+        URL.revokeObjectURL(link.href);
+        showToast("Downloaded drops-deck-edited.html");
+      }
+    }
+
+    const presentation = new SlidePresentation();
+    const editor = new InlineEditor();
+    const editToggle = document.getElementById("editToggle");
+    const hotzone = document.querySelector(".edit-hotzone");
+    const toast = document.getElementById("toast");
+    let hideTimeout = null;
+    let toastTimeout = null;
+
+    function showToast(message) {
+      toast.textContent = message;
+      toast.classList.add("show");
+      window.clearTimeout(toastTimeout);
+      toastTimeout = window.setTimeout(() => toast.classList.remove("show"), 1800);
+    }
+
+    editToggle.addEventListener("click", () => editor.toggleEditMode());
+    hotzone.addEventListener("mouseenter", () => {
+      window.clearTimeout(hideTimeout);
+      editToggle.classList.add("show");
+    });
+    hotzone.addEventListener("mouseleave", () => {
+      hideTimeout = window.setTimeout(() => {
+        if (!editor.isActive) editToggle.classList.remove("show");
+      }, 400);
+    });
+    editToggle.addEventListener("mouseenter", () => window.clearTimeout(hideTimeout));
+    editToggle.addEventListener("mouseleave", () => {
+      hideTimeout = window.setTimeout(() => {
+        if (!editor.isActive) editToggle.classList.remove("show");
+      }, 400);
+    });
+    hotzone.addEventListener("click", () => editor.toggleEditMode());
+
+    document.addEventListener("input", () => {
+      if (editor.isActive) editor.save();
+    });
+    document.addEventListener("keydown", (event) => {
+      const isEditingText = event.target?.getAttribute?.("contenteditable") === "true";
+      if ((event.key === "e" || event.key === "E") && !isEditingText) editor.toggleEditMode();
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
+        event.preventDefault();
+        editor.download();
+      }
+    });
+  </script>
+</body>
+</html>
