@@ -245,9 +245,8 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
   border-radius:11px; background:#635bff; color:#fff; font-family:var(--font-display); font-weight:800; font-size:23px; letter-spacing:-.06em; }
 .why .h{ font-family:var(--font-display); font-weight:700; font-size:22px; margin-top:20px; line-height:1.2; }
 .why .h .flame{ color:var(--flame); }
-.why .h .card-emphasis{ font-style:italic; text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:4px; }
-.why .h .seed-emphasis{ color:var(--live); text-decoration-color:var(--live); }
-.why .h .stripe-emphasis{ color:#635bff; text-decoration-color:#635bff; }
+.why .h .seed-emphasis{ color:var(--live); }
+.why .h .stripe-emphasis{ color:#635bff; }
 .impact .source{ margin-top:10px; font-family:var(--font-mono); font-size:11px; color:var(--muted-foreground); }
 
 /* ============================================================
@@ -466,78 +465,16 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
           </div>
           <div class="card">
             <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg></div>
-            <div class="h">Big businesses of tomorrow <span class="card-emphasis seed-emphasis">start small today</span></div>
+            <div class="h">Big businesses of tomorrow <span class="seed-emphasis">start small today</span></div>
           </div>
           <div class="card">
             <div class="ic"><span class="stripechip">S</span></div>
-            <div class="h">Win them early, <span class="card-emphasis stripe-emphasis">ride the growth.</span></div>
+            <div class="h">Win them early, <span class="stripe-emphasis">ride the growth.</span></div>
           </div>
         </div>
         <div class="source rise">Google, Temasek &amp; Bain · e-Conomy SEA 2025 · video-commerce sellers &amp; stores, SEA-6</div>
       </div>
       <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">08</span></div>
-    </section>
-
-    <!-- 9 · HOW WE BUILT IT -->
-    <section class="slide" data-name="How we built it">
-      <div class="tech">
-        <div class="center-head rise">
-          <h2 style="font-size:40px;">How we built it.</h2>
-          <p>AI is only the setup. Money and stock stay deterministic.</p>
-        </div>
-        <div class="pipe rise">
-          <div class="stage-card card">
-            <span class="n">SETUP</span><span class="h">AI vision</span>
-            <span class="d">Photo → products, prices, variants. Asks only what blocks checkout.</span>
-            <span class="owns ai owns-line">proposes — never decides</span>
-          </div>
-          <div class="arrow">→</div>
-          <div class="stage-card card">
-            <span class="n">DURING</span><span class="h">State machine</span>
-            <span class="d">One guarded atomic write owns stock. The last unit resolves to exactly one PAID.</span>
-            <span class="owns det">owns stock &amp; money</span>
-          </div>
-          <div class="arrow">→</div>
-          <div class="stage-card card">
-            <span class="n">AFTER</span><span class="h">HitPay webhook</span>
-            <span class="d">Paid state only from the signature-validated webhook. Never the redirect.</span>
-            <span class="owns hp">the source of truth</span>
-          </div>
-        </div>
-        <div class="proofrow rise">
-          <span class="proof">✓ race:proof — 12 concurrent · exactly 4 PAID / 8 PAID_LATE · never oversold</span>
-          <span class="builtwith">Built with the <b>HitPay integration skill</b> &amp; Claude Code plugin.</span>
-        </div>
-      </div>
-      <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">09</span></div>
-    </section>
-
-    <!-- 10 · CLOSE -->
-    <section class="slide" data-name="Close">
-      <div class="close">
-        <h1 class="rise">Ten messages became <span class="flame">one link.</span></h1>
-        <p class="road rise">Next: returning-buyer memory, one-tap rebuy, and collab drops with split settlement — point any audience at a drop link.</p>
-        <div class="end rise"><span class="slug">drops.sg</span> · built for a person with a following.</div>
-      </div>
-      <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">10</span></div>
-    </section>
-
-    <!-- 11 · Q&A APPENDIX -->
-    <section class="slide qa" data-name="Q&amp;A appendix">
-      <div class="center-head rise">
-        <h2>Q&amp;A — the objections, ready.</h2>
-        <p>Appendix · keep <span class="mono">race:proof</span> on a tab as the "is it real?" trump card.</p>
-      </div>
-      <div class="list rise">
-        <div class="q"><span class="num">01</span><span class="txt"><b>"Isn't this a feature HitPay already has?"</b> → Different object, different user. It's an on-ramp, not a wrapper.</span></div>
-        <div class="q"><span class="num">02</span><span class="txt"><b>"What's the business model?"</b> → Rides payment volume + acquires the off-platform long tail.</span></div>
-        <div class="q"><span class="num">03</span><span class="txt"><b>"PAID_LATE refunds a payer — why not reserve?"</b> → Reservations undersell during the rush; one guarded write, one clean refund.</span></div>
-        <div class="q"><span class="num">04</span><span class="txt"><b>"Will non-technical sellers switch?"</b> → Zero switching cost — same photo, same channels, magic-link auth.</span></div>
-        <div class="q"><span class="num">05</span><span class="txt"><b>"Is the 3D a gimmick / copyable?"</b> → It's the on-ramp charm; the moat is off-platform + self-reconciliation.</span></div>
-        <div class="q"><span class="num">06</span><span class="txt"><b>"Distribution?"</b> → The drop link is the growth loop; sellers cluster in the same communities.</span></div>
-        <div class="q"><span class="num">07</span><span class="txt"><b>"Only drops?"</b> → Always-on is a drop with the window off. Lead with the moment of highest pain.</span></div>
-      </div>
-      <div class="foot"><span class="brand"><b>drops</b> · appendix</span><span class="mono">Q&amp;A</span></div>
     </section>
 
   </div>
