@@ -220,6 +220,8 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
   border:1px solid rgb(255 255 255 / 22%); border-radius:999px; padding:8px 16px;
   font-family:var(--font-mono); font-size:14px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:26px; }
 .demo h1{ color:var(--primary-foreground); font-size:60px; }
+.demo-link{ color:inherit; text-decoration:none; }
+.demo-link:focus-visible{ outline:3px solid var(--flame); outline-offset:8px; border-radius:8px; }
 .demo .beats{ display:flex; gap:14px; margin-top:40px; flex-wrap:wrap; }
 .beat{ display:flex; align-items:center; gap:14px; }
 .beat .b{ display:flex; flex-direction:column; }
@@ -422,17 +424,17 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
       <div class="solve">
         <div>
           <div class="kicker rise" style="margin-bottom:18px;">The solution</div>
-          <h1 class="rise">Meet Drops.</h1>
+          <h1 class="rise">Drops!</h1>
           <p class="lead rise" style="margin-top:18px; max-width:24ch;">Upload product photos → a live storefront in 60 seconds.</p>
         </div>
         <div>
           <div class="promise card rise">
             <div class="who">For the seller</div>
-            <div class="what">A storefront that looks like <span class="flame">you</span> — not a template. Live, ASAP.</div>
+            <div class="what">A digital storefront that is <span class="flame">personalised, ASAP.</span></div>
           </div>
           <div class="promise card rise">
             <div class="who">For the buyer</div>
-            <div class="what">You <span class="flame">walk into a little shop</span>, with other people — not a checkout form.</div>
+            <div class="what">You <span class="flame">walk into a little shop</span>, with other people.</div>
           </div>
         </div>
       </div>
@@ -443,20 +445,14 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
     <section class="slide" data-name="Live demo">
       <div class="demo">
         <span class="live rise"><span class="dot"></span> Live demo</span>
-        <h1 class="rise">Let's build Rotififi's drop — live.</h1>
-        <div class="beats rise">
-          <div class="beat"><div class="b"><span class="n">01</span><span class="t">Spin up</span></div><span class="arrow">→</span></div>
-          <div class="beat"><div class="b"><span class="n">02</span><span class="t">Walk in</span></div><span class="arrow">→</span></div>
-          <div class="beat"><div class="b"><span class="n">03</span><span class="t">The rush</span></div><span class="arrow">→</span></div>
-          <div class="beat"><div class="b"><span class="n">04</span><span class="t">Settle</span></div></div>
-        </div>
+        <h1 class="rise"><a class="demo-link" href="/">Let's sell some merch</a></h1>
       </div>
     </section>
 
     <!-- 8 · IMPACT / WEDGE -->
     <section class="slide" data-name="Impact">
       <div class="impact">
-        <div class="kicker rise">Who it's for · why it matters to HitPay</div>
+        <div class="kicker rise">Why it matters</div>
         <h1 class="claim rise">HitPay’s next merchants are already selling—<span class="flame">just not on HitPay.</span></h1>
         <div class="why rise">
           <div class="card">
