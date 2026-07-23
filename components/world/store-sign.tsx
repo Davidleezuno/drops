@@ -2,8 +2,8 @@
 
 import { RoundedBox, Text } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { useMemo, useRef } from 'react'
-import { CanvasTexture, type Mesh, type MeshBasicMaterial } from 'three'
+import { useRef } from 'react'
+import type { Mesh, MeshBasicMaterial } from 'three'
 
 import type { SceneConfig } from '@/lib/world/scene-config'
 
@@ -12,21 +12,6 @@ import { INK } from './decor'
 const DISPLAY_FONT = '/fonts/bricolage-grotesque-600.woff'
 const SANS_FONT = '/fonts/instrument-sans-500.woff'
 const MONO_FONT = '/fonts/geist-mono-500.woff'
-
-function useGlowTexture() {
-  return useMemo(() => {
-    const canvas = document.createElement('canvas')
-    canvas.width = canvas.height = 128
-    const ctx = canvas.getContext('2d')!
-    const gradient = ctx.createRadialGradient(64, 64, 4, 64, 64, 64)
-    gradient.addColorStop(0, 'rgba(255,255,255,0.85)')
-    gradient.addColorStop(0.55, 'rgba(255,255,255,0.28)')
-    gradient.addColorStop(1, 'rgba(255,255,255,0)')
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, 128, 128)
-    return new CanvasTexture(canvas)
-  }, [])
-}
 
 /** The LivePill promoted to signage: a small breathing dot beside mono copy. */
 function LiveDot({ closed }: { closed: boolean }) {
@@ -48,18 +33,16 @@ function LiveDot({ closed }: { closed: boolean }) {
 }
 
 /**
- * A real shop sign, not a billboard: a wooden fascia board hung off the back
- * wall on two rope drops from the ceiling, painted face with a seller-accent
- * rim, a hand-hung half-degree tilt. The accent halo stays on the wall
- * behind it (faked with a gradient texture; real bloom is a mobile perf
- * trap, per docs/3d-world-design.md §5). Tilted but still — it never sways.
+ * A real shop sign, not a billboard: a wooden fascia suspended from the
+ * centre beam, with a seller-accent rim and a hand-hung half-degree tilt.
+ * It stays still so the sign reads as architecture rather than UI.
  */
 export function StoreSign({
   config,
   accent,
   closed,
-  position = [0, 2.28, -4.62],
-  scale = 1,
+  position = [0, 2.42, -1.9],
+  scale = 0.58,
 }: {
   config: SceneConfig
   accent: string
@@ -67,28 +50,15 @@ export function StoreSign({
   position?: [number, number, number]
   scale?: number
 }) {
-  const glow = useGlowTexture()
   const statusText = closed ? 'CLOSED' : 'LIVE IN STORE'
 
   return (
     <group position={position} rotation={[0, 0, 0.012]} scale={scale}>
-      {/* Accent halo on the wall behind the hanging board */}
-      <mesh position={[0, 0.1, -0.34]}>
-        <planeGeometry args={[6.4, 3.1]} />
-        <meshBasicMaterial
-          map={glow}
-          color={accent}
-          transparent
-          opacity={closed ? 0.22 : 0.55}
-          depthWrite={false}
-        />
-      </mesh>
-
-      {/* Rope drops from the ceiling (3.2m) to the board's top corners */}
+      {/* Long rope drops meet the 3.5m ceiling at this placement. */}
       {[-1.85, 1.85].map((x) => (
         <group key={x}>
-          <mesh position={[x, 0.925, 0]}>
-            <cylinderGeometry args={[0.016, 0.016, 0.45, 6]} />
+          <mesh position={[x, 1.29, 0]}>
+            <cylinderGeometry args={[0.016, 0.016, 1.14, 6]} />
             <meshStandardMaterial color="#8a7052" roughness={0.95} />
           </mesh>
           <mesh position={[x, 0.71, 0.02]}>

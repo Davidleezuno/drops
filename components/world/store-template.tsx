@@ -467,10 +467,10 @@ export function StoreTemplate({
         config={config}
         accent={accent}
         closed={windowClosed}
-        position={[0, 2.22, -4.34]}
-        scale={0.72}
+        position={[0, 2.42, -1.9]}
+        scale={0.58}
       />
-      <WallTicker announcement={announcement} position={[0, 1.18, -4.29]} />
+      <WallTicker announcement={announcement} position={[0, 0.24, -4.29]} />
       <WallOfThanks
         key={appreciations[0]?.id ?? 'empty-wall'}
         appreciations={appreciations}

@@ -36,12 +36,11 @@ export function WallOfThanks({
 
   return (
     <group
-      position={[5.82, 1.72, -2.88]}
-      rotation={[0, -Math.PI / 2, -0.018]}
+      position={[0, 1.14, -4.43]}
+      rotation={[0, 0, -0.018]}
     >
-      {/* A quiet, wall-mounted oak noticeboard inspired by the shophouse
-          menu board. This rear-right wall segment is outside every station
-          footprint, so merchandise and the central circulation stay clear. */}
+      {/* A quiet oak noticeboard in the back-wall position vacated by the
+          store sign. The adjacent stations stop short of this centre bay. */}
       <RoundedBox
         args={[1.16, 1.46, 0.045]}
         radius={0.018}
