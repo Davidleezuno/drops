@@ -194,7 +194,7 @@ export function OrderStatus({ order }: { order: BuyerOrder }) {
             <Card className="mt-6 overflow-hidden border-flame/20 bg-flame-soft/45">
               <CardHeader>
                 <p className="font-mono text-[10px] tracking-[0.18em] text-flame uppercase">
-                  Wall of appreciation
+                  Wall of thanks
                 </p>
                 <CardTitle className="font-display text-2xl">
                   Leave a note for {order.sellerName}

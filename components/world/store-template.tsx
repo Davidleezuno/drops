@@ -25,7 +25,7 @@ import {
 } from './shophouse-decor'
 import { StoreSign } from './store-sign'
 import { WallTicker } from './wall-ticker'
-import { WallOfAppreciation } from './wall-of-appreciation'
+import { WallOfThanks } from './wall-of-thanks'
 
 const ROOM = { width: 12, depth: 9, height: 3.5 } as const
 const DOOR = { x: -3.2, width: 1.5, height: 2.35 } as const
@@ -471,7 +471,7 @@ export function StoreTemplate({
         scale={0.72}
       />
       <WallTicker announcement={announcement} position={[0, 1.18, -4.29]} />
-      <WallOfAppreciation
+      <WallOfThanks
         key={appreciations[0]?.id ?? 'empty-wall'}
         appreciations={appreciations}
         accent={accent}
