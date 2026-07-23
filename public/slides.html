@@ -252,6 +252,30 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
 .impact .source{ margin-top:10px; font-family:var(--font-mono); font-size:11px; color:var(--muted-foreground); }
 
 /* ============================================================
+   SLIDE 9 — connect
+   ============================================================ */
+.connect{ position:relative; flex:1; margin:-72px -84px; padding:72px 84px;
+  display:grid; grid-template-columns:1.2fr .8fr; gap:72px; align-items:center;
+  background:var(--primary); color:var(--primary-foreground); overflow:hidden; }
+.connect::before{ content:""; position:absolute; width:430px; height:430px; border-radius:50%;
+  right:-170px; top:-210px; border:1px solid rgb(255 255 255 / 10%); box-shadow:0 0 0 70px rgb(255 255 255 / 3%); }
+.connect-copy{ position:relative; z-index:1; }
+.connect .kicker{ color:rgb(255 255 255 / 56%); margin-bottom:24px; }
+.connect h1{ color:var(--primary-foreground); font-size:78px; max-width:10ch; }
+.connect .invite{ margin-top:28px; max-width:27ch; font-size:25px; line-height:1.45; color:rgb(255 255 255 / 72%); }
+.connect .invite .flame{ color:oklch(0.78 0.14 55); }
+.connect-card{ position:relative; z-index:1; justify-self:end; width:380px; padding:28px;
+  background:#fff; border-radius:30px; box-shadow:0 30px 80px rgb(0 0 0 / 30%); transform:rotate(1.25deg); }
+.connect-card img{ display:block; width:100%; aspect-ratio:1; border-radius:14px; }
+.connect-card .scan{ margin-top:18px; color:var(--foreground); font-family:var(--font-display); font-size:20px; font-weight:700; }
+.connect-card .handle{ margin-top:5px; color:var(--muted-foreground); font-family:var(--font-mono); font-size:13px; }
+.connect-card a{ color:inherit; text-decoration:none; }
+.connect-card a:focus-visible{ outline:4px solid var(--flame); outline-offset:8px; border-radius:14px; }
+.connect-mark{ display:inline-flex; align-items:center; gap:9px; margin-top:34px; color:rgb(255 255 255 / 65%);
+  font-family:var(--font-mono); font-size:14px; letter-spacing:.04em; }
+.connect-mark::before{ content:""; width:28px; height:3px; border-radius:999px; background:var(--flame); }
+
+/* ============================================================
    SLIDE 9 — how we built it
    ============================================================ */
 .tech{ flex:1; display:flex; flex-direction:column; }
@@ -471,6 +495,25 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
         <div class="source rise">Google, Temasek &amp; Bain · e-Conomy SEA 2025 · video-commerce sellers &amp; stores, SEA-6</div>
       </div>
       <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">08</span></div>
+    </section>
+
+    <!-- 9 · CONNECT -->
+    <section class="slide" data-name="Let's connect">
+      <div class="connect">
+        <div class="connect-copy">
+          <div class="kicker rise">One more thing</div>
+          <h1 class="rise">Let’s <span class="flame">connect!</span></h1>
+          <p class="invite rise">I’d like to hear your <span class="flame">SMB pain points</span>—or whatever your company is building in general!</p>
+          <div class="connect-mark rise">David Lee Zhiyi · LinkedIn</div>
+        </div>
+        <div class="connect-card rise">
+          <a href="https://www.linkedin.com/in/davidleezhiyi/" target="_blank" rel="noreferrer" aria-label="Connect with David Lee Zhiyi on LinkedIn">
+            <img src="/slides-assets/linkedin-qr.png" alt="QR code for David Lee Zhiyi's LinkedIn profile" />
+            <div class="scan">Scan to connect on LinkedIn</div>
+            <div class="handle">linkedin.com/in/davidleezhiyi</div>
+          </a>
+        </div>
+      </div>
     </section>
 
   </div>
