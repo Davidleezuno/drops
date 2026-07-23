@@ -1,9 +1,8 @@
 'use client'
 
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { socialTopic, type Appreciation } from '@/lib/social-events'
+import type { Appreciation } from '@/lib/social-events'
 import { presenceKey } from '@/lib/world/names'
 
 export type Announcement =
@@ -38,13 +37,9 @@ type SocialEventPayload = {
  * Global storefront presence is intentionally disabled on the Free tier. Only
  * the capped 3D room opens a presence connection.
  */
-export function useDropSocial(
-  supabase: SupabaseClient,
-  dropId: string,
-  {
-    initialAppreciations = [],
-  }: { initialAppreciations?: Appreciation[] } = {},
-) {
+export function useDropSocial({
+  initialAppreciations = [],
+}: { initialAppreciations?: Appreciation[] } = {}) {
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [appreciations, setAppreciations] = useState(initialAppreciations)
   const [sessionKey] = useState<string | null>(() =>
@@ -120,21 +115,19 @@ export function useDropSocial(
     [],
   )
 
-  useEffect(() => {
-    const channel = supabase
-      .channel(socialTopic(dropId))
-      .on('broadcast', { event: 'paid' }, ({ payload }) => {
-        const event = payload as SocialEventPayload | undefined
-        if (typeof event?.note !== 'string' || !event.note.trim()) return
-        showAnnouncement('paid', event)
-      })
-      .subscribe()
+  useEffect(
+    () => () => window.clearTimeout(dismissTimerRef.current),
+    [],
+  )
 
-    return () => {
-      window.clearTimeout(dismissTimerRef.current)
-      void supabase.removeChannel(channel)
-    }
-  }, [dropId, showAnnouncement, supabase])
+  const receiveAppreciation = useCallback(
+    (payload: unknown) => {
+      const event = payload as SocialEventPayload | undefined
+      if (typeof event?.note !== 'string' || !event.note.trim()) return
+      showAnnouncement('paid', event)
+    },
+    [showAnnouncement],
+  )
 
   const announcePaid = useCallback(
     (productName: string, qty: number) =>
@@ -152,5 +145,6 @@ export function useDropSocial(
     appreciations,
     presenceKey: sessionKey,
     announcePaid,
+    receiveAppreciation,
   }
 }

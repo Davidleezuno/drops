@@ -67,12 +67,13 @@ export function DropStorefront({
 }) {
   const supabase = useMemo(() => createClient(), [])
   const [windowClosed, setWindowClosed] = useState(initialEnded)
-  const social = useDropSocial(supabase, drop.id, { initialAppreciations })
+  const social = useDropSocial({ initialAppreciations })
   const products = useLiveDropProducts({
     supabase,
     dropId: drop.id,
     initialProducts,
     paused: windowClosed,
+    onAppreciation: social.receiveAppreciation,
     onPaidStockChange: social.announcePaid,
   })
 

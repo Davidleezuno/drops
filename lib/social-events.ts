@@ -31,6 +31,11 @@ export type Appreciation = {
   note: string
 }
 
+/** Stock updates and rare appreciation notes share one channel per drop. */
+export function dropProductsTopic(dropId: string) {
+  return `drop-${dropId}-products`
+}
+
 /** One social channel per drop, a sibling of the products channel. */
 export function socialTopic(dropId: string) {
   return `drop-${dropId}-social`

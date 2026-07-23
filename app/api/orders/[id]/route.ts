@@ -1,4 +1,4 @@
-import { after, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 import { createServiceClient } from '@/lib/db'
 import {
@@ -213,9 +213,9 @@ export async function PATCH(
     )
   }
 
-  // Re-broadcast the verified purchase with its newly attached appreciation.
-  // The room adds the note to its wall; payment state remains server-owned.
-  after(() => broadcastPaidOrder(id))
+  // Complete the explicit HTTP broadcast attempt before responding. The note
+  // is already durable, so a Realtime failure still degrades safely to refresh.
+  await broadcastPaidOrder(id)
 
   return NextResponse.json({ note })
 }

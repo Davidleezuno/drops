@@ -1,5 +1,10 @@
 import { createServiceClient } from '@/lib/db'
-import { firstNameOnly, socialTopic, type SocialEvent } from '@/lib/social-events'
+import {
+  dropProductsTopic,
+  firstNameOnly,
+  socialTopic,
+  type SocialEvent,
+} from '@/lib/social-events'
 
 /**
  * Server-side social broadcasts (future-ideas §2). Claim and paid events are
@@ -7,23 +12,26 @@ import { firstNameOnly, socialTopic, type SocialEvent } from '@/lib/social-event
  * forge a purchase ticker. Always best-effort: announcements are atmosphere,
  * not state, so a failure must never break the money path.
  */
-async function broadcastSocialEvent(dropId: string, event: SocialEvent) {
+async function broadcastSocialEvent(
+  dropId: string,
+  event: SocialEvent,
+  {
+    topic = socialTopic(dropId),
+    broadcastEvent = event.type,
+  }: { topic?: string; broadcastEvent?: string } = {},
+) {
   const supabase = createServiceClient()
-  const channel = supabase.channel(socialTopic(dropId))
+  const channel = supabase.channel(topic)
 
   try {
-    // send() on an unsubscribed channel goes over Realtime's HTTP broadcast
-    // endpoint — no websocket needed from a serverless function.
-    const outcome = await channel.send({
-      type: 'broadcast',
-      event: event.type,
-      payload: event,
-    })
-    if (outcome !== 'ok') {
-      console.warn(`Social ${event.type} broadcast returned ${outcome}`)
+    const outcome = await channel.httpSend(broadcastEvent, event)
+    if (!outcome.success) {
+      console.warn(
+        `Social ${broadcastEvent} broadcast returned ${outcome.status}: ${outcome.error}`,
+      )
     }
   } catch (caught) {
-    console.warn(`Social ${event.type} broadcast failed`, caught)
+    console.warn(`Social ${broadcastEvent} broadcast failed`, caught)
   } finally {
     void supabase.removeChannel(channel)
   }
@@ -67,12 +75,19 @@ export async function broadcastPaidOrder(orderId: string) {
     return
   }
 
-  await broadcastSocialEvent(order.product.drop_id, {
-    type: 'paid',
-    firstName: firstNameOnly(order.buyer_name),
-    productName: order.product.name,
-    qty: order.qty,
-    ...(order.buyer_note ? { note: order.buyer_note } : {}),
-    at: order.buyer_note_at ?? new Date().toISOString(),
-  })
+  await broadcastSocialEvent(
+    order.product.drop_id,
+    {
+      type: 'paid',
+      firstName: firstNameOnly(order.buyer_name),
+      productName: order.product.name,
+      qty: order.qty,
+      ...(order.buyer_note ? { note: order.buyer_note } : {}),
+      at: order.buyer_note_at ?? new Date().toISOString(),
+    },
+    {
+      topic: dropProductsTopic(order.product.drop_id),
+      broadcastEvent: 'appreciation',
+    },
+  )
 }

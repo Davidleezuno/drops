@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { useEffect, useRef, useState } from 'react'
 
 import { allSoldOut } from '@/lib/drop-state'
+import { dropProductsTopic } from '@/lib/social-events'
 import type { Product, ProductVariant } from '@/lib/types'
 
 const POLL_INTERVAL_MS = 5_000
@@ -30,12 +31,14 @@ export function useLiveDropProducts({
   dropId,
   initialProducts,
   paused,
+  onAppreciation,
   onPaidStockChange,
 }: {
   supabase: SupabaseClient
   dropId: string
   initialProducts: Product[]
   paused: boolean
+  onAppreciation?: (payload: unknown) => void
   onPaidStockChange?: (productName: string, quantity: number) => void
 }) {
   const [products, setProducts] = useState(initialProducts)
@@ -81,7 +84,10 @@ export function useLiveDropProducts({
     }
 
     const channel = supabase
-      .channel(`drop-${dropId}-products`)
+      .channel(dropProductsTopic(dropId))
+      .on('broadcast', { event: 'appreciation' }, ({ payload }) => {
+        onAppreciation?.(payload)
+      })
       .on(
         'postgres_changes',
         {
@@ -159,7 +165,14 @@ export function useLiveDropProducts({
       document.removeEventListener('visibilitychange', refreshWhenVisible)
       void supabase.removeChannel(channel)
     }
-  }, [dropId, onPaidStockChange, paused, soldOut, supabase])
+  }, [
+    dropId,
+    onAppreciation,
+    onPaidStockChange,
+    paused,
+    soldOut,
+    supabase,
+  ])
 
   return products
 }
