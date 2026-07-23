@@ -5,7 +5,7 @@ import { createServiceClient } from '@/lib/db'
 import { dropWindowClosed } from '@/lib/drop-state'
 import { storefrontThemeSchema } from '@/lib/drop-builder'
 import { storefrontScopeVars } from '@/lib/theme'
-import { firstNameOnly, type Appreciation } from '@/lib/social-events'
+import { buyerDisplayName, type Appreciation } from '@/lib/social-events'
 import type { Product, StorefrontTheme } from '@/lib/types'
 import { buildSceneConfig } from '@/lib/world/scene-config'
 
@@ -19,7 +19,7 @@ type AppreciationRow = {
   buyer_name: string
   buyer_note: string
   buyer_note_at: string
-  product: { name: string } | null
+  product: { drop_id: string } | null
 }
 
 function parseTheme(theme: unknown): StorefrontTheme | null {
@@ -59,7 +59,7 @@ export default async function DropPage({
 
   const { data: appreciationRows } = await supabase
     .from('orders')
-    .select('buyer_name, buyer_note, buyer_note_at, product:products!inner(name, drop_id)')
+    .select('buyer_name, buyer_note, buyer_note_at, product:products!inner(drop_id)')
     .eq('product.drop_id', drop.id)
     .eq('status', 'PAID')
     .not('buyer_note', 'is', null)
@@ -71,8 +71,7 @@ export default async function DropPage({
     .filter((row) => row.buyer_note && row.buyer_note_at && row.product)
     .map((row) => ({
       id: row.buyer_note_at,
-      firstName: firstNameOnly(row.buyer_name),
-      productName: row.product!.name,
+      buyerName: buyerDisplayName(row.buyer_name),
       note: row.buyer_note,
     }))
 

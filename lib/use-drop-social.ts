@@ -22,6 +22,7 @@ const COALESCE_WINDOW_MS = 30_000
 const COALESCE_THRESHOLD = 2
 
 type SocialEventPayload = {
+  buyerName?: unknown
   firstName?: unknown
   productName?: unknown
   qty?: unknown
@@ -51,9 +52,11 @@ export function useDropSocial({
   const dismissTimerRef = useRef<number | undefined>(undefined)
   const showAnnouncement = useCallback(
     (kind: 'claim' | 'paid', payload: SocialEventPayload | undefined) => {
-      const firstName =
-        typeof payload?.firstName === 'string' && payload.firstName
-          ? payload.firstName
+      const buyerName =
+        typeof payload?.buyerName === 'string' && payload.buyerName
+          ? payload.buyerName
+          : typeof payload?.firstName === 'string' && payload.firstName
+            ? payload.firstName
           : 'Someone'
       const productName =
         typeof payload?.productName === 'string' ? payload.productName : ''
@@ -67,11 +70,11 @@ export function useDropSocial({
         const noteId =
           typeof payload?.at === 'string' && payload.at
             ? payload.at
-            : `${Date.now()}-${firstName}`
+            : `${Date.now()}-${buyerName}`
         setAppreciations((current) => {
           if (current.some((item) => item.id === noteId)) return current
           return [
-            { id: noteId, firstName, productName, note },
+            { id: noteId, buyerName, note },
             ...current,
           ].slice(0, 12)
         })
@@ -99,7 +102,7 @@ export function useDropSocial({
           : {
               id,
               kind,
-              firstName,
+              firstName: buyerName,
               productName,
               qty,
               ...(kind === 'paid' && note ? { note } : {}),

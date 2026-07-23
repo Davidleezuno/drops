@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/db'
 import {
+  buyerDisplayName,
   dropProductsTopic,
   firstNameOnly,
   socialTopic,
@@ -79,7 +80,7 @@ export async function broadcastPaidOrder(orderId: string) {
     order.product.drop_id,
     {
       type: 'paid',
-      firstName: firstNameOnly(order.buyer_name),
+      buyerName: buyerDisplayName(order.buyer_name),
       productName: order.product.name,
       qty: order.qty,
       ...(order.buyer_note ? { note: order.buyer_note } : {}),

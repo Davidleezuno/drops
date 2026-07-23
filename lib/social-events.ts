@@ -16,7 +16,7 @@ export type SocialEvent =
   | { type: 'claim'; firstName: string; productName: string; qty: number; at: string }
   | {
       type: 'paid'
-      firstName: string
+      buyerName: string
       productName: string
       qty: number
       note?: string
@@ -26,8 +26,7 @@ export type SocialEvent =
 
 export type Appreciation = {
   id: string
-  firstName: string
-  productName: string
+  buyerName: string
   note: string
 }
 
@@ -48,6 +47,12 @@ export function socialTopic(dropId: string) {
 export function firstNameOnly(name: string | null | undefined): string {
   const first = name?.trim().split(/\s+/)[0] ?? ''
   return first ? first.slice(0, 24) : 'Someone'
+}
+
+/** Preserve the buyer-entered checkout name while normalizing whitespace. */
+export function buyerDisplayName(name: string | null | undefined): string {
+  const displayName = name?.trim().replace(/\s+/g, ' ') ?? ''
+  return displayName ? displayName.slice(0, 120) : 'Someone'
 }
 
 export function isReactionEmoji(value: unknown): value is ReactionEmoji {

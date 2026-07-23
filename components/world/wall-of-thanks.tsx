@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import type { Appreciation } from '@/lib/social-events'
 
-const VISIBLE_NOTES = 3
+const VISIBLE_NOTES = 1
 
 export function WallOfThanks({
   appreciations,
@@ -42,64 +42,59 @@ export function WallOfThanks({
       {/* A quiet oak noticeboard in the back-wall position vacated by the
           store sign. The adjacent stations stop short of this centre bay. */}
       <RoundedBox
-        args={[1.16, 1.46, 0.045]}
-        radius={0.018}
+        args={[2.4, 1.68, 0.055]}
+        radius={0.025}
         smoothness={2}
         castShadow
       >
         <meshStandardMaterial color="#765337" roughness={0.9} />
       </RoundedBox>
       <mesh position={[0, 0, 0.026]}>
-        <planeGeometry args={[1.05, 1.35]} />
+        <planeGeometry args={[2.24, 1.52]} />
         <meshStandardMaterial color="#eadfca" roughness={0.98} />
       </mesh>
 
       <Html
         transform
         position={[0, 0, 0.03]}
-        distanceFactor={1.42}
+        distanceFactor={1.87}
         style={{ pointerEvents: 'none' }}
       >
         <section
           aria-label="Wall of thanks"
-          className="h-[360px] w-[280px] overflow-hidden bg-[#eadfca] px-5 py-4 text-[#493c32]"
+          className="h-[320px] w-[480px] overflow-hidden bg-[#eadfca] px-8 py-7 text-[#493c32]"
         >
-          <header className="border-b border-[#6f5b49]/25 pb-2.5">
-            <div className="flex items-baseline justify-between gap-3">
-              <h2 className="font-display text-[22px] leading-none font-semibold">
-                Wall of thanks
-              </h2>
-              <span className="font-mono text-[8px] text-[#7b6a5d] tabular-nums">
-                {String(appreciations.length).padStart(2, '0')} notes
-              </span>
-            </div>
+          <header className="border-b border-[#6f5b49]/25 pb-4">
+            <h2 className="font-display text-[30px] leading-none font-semibold">
+              Wall of thanks
+            </h2>
             <div
-              className="mt-2 h-px w-10 opacity-65"
+              className="mt-3 h-0.5 w-16 opacity-65"
               style={{ backgroundColor: accent }}
             />
           </header>
 
           <div
-            className="mt-2.5 grid content-start divide-y divide-[#6f5b49]/15"
+            className="mt-5 grid content-start"
             aria-live="polite"
           >
             {visible.length ? (
               visible.map((item) => (
                 <article
                   key={item.id}
-                  className="motion-safe:animate-rise py-2.5"
+                  className="motion-safe:animate-rise"
                 >
-                  <p className="line-clamp-2 font-serif text-[13px] leading-snug italic">
+                  <p className="line-clamp-4 font-serif text-[28px] leading-[1.18] italic">
                     &ldquo;{item.note}&rdquo;
                   </p>
-                  <p className="mt-1 truncate font-mono text-[7px] tracking-[0.08em] text-[#7b6a5d] uppercase">
-                    {item.firstName} · {item.productName}
+                  <p className="mt-4 truncate font-mono text-[12px] tracking-[0.1em] text-[#6d5d50] uppercase">
+                    {item.buyerName}
                   </p>
                 </article>
               ))
             ) : (
               <div className="pt-4">
-                <p className="font-serif text-[14px] leading-snug italic text-[#65594f]">
+                <p className="font-serif text-[24px] leading-snug italic text-[#65594f]">
                   Kind words from buyers will appear here.
                 </p>
               </div>
