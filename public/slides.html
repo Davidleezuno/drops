@@ -188,7 +188,13 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
 .hmw{ flex:1; display:flex; flex-direction:column; justify-content:center; align-items:flex-start; }
 .hmw .tag{ font-family:var(--font-mono); font-size:16px; letter-spacing:.16em; text-transform:uppercase;
   color:var(--muted-foreground); margin-bottom:28px; }
-.hmw h1{ font-size:66px; max-width:19ch; }
+.hmw h1{ font-size:58px; max-width:none; line-height:1.16; }
+.hmw-line{ display:block; white-space:nowrap; }
+.hmw-emphasis{ font-style:italic; font-weight:700; text-decoration-line:underline;
+  text-decoration-thickness:5px; text-underline-offset:7px; }
+.hmw-easy{ color:var(--alarm); text-decoration-color:var(--alarm); }
+.hmw-following{ color:var(--flame); text-decoration-color:var(--flame); }
+.hmw-storefront{ color:oklch(0.48 0.16 250); text-decoration-color:oklch(0.48 0.16 250); }
 
 /* ============================================================
    SLIDE 6 — meet drops
@@ -225,31 +231,24 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
    SLIDE 8 — wedge (impact / biz)
    ============================================================ */
 .impact{ flex:1; display:flex; flex-direction:column; }
-.impact .center-head{ margin-bottom:24px; }
-.wedge{ flex:1; display:grid; grid-template-columns:1fr 84px 1fr 84px 1fr; align-items:center; gap:0; }
-.wedge .col-h{ font-family:var(--font-mono); font-size:13px; letter-spacing:.1em; text-transform:uppercase;
-  color:var(--muted-foreground); margin-bottom:14px; }
-.arch{ display:flex; flex-direction:column; gap:10px; }
-.arch .row{ display:flex; align-items:center; gap:12px; font-weight:600; font-size:17px; }
-.arch .row .e{ font-size:20px; }
-.offtag{ margin-top:14px; font-family:var(--font-mono); font-size:13px; color:var(--alarm); }
-.wedge .arrow{ text-align:center; color:var(--muted-foreground); font-size:30px; }
-.linknode{ text-align:center; }
-.linknode .lp{ display:inline-flex; flex-direction:column; align-items:center; gap:8px;
-  background:var(--card); border:1px solid var(--border); border-radius:20px; padding:22px 20px;
-  box-shadow:0 14px 34px rgb(45 41 37 / 10%); }
-.linknode .lp .u{ font-family:var(--font-mono); font-size:16px; }
-.linknode .lp .u .slug{ color:var(--flame); }
-.linknode .lp .qr{ font-size:30px; }
-.hpnode{ background: oklch(0.956 0.0428 152); border:1px solid oklch(0.5911 0.1338 155 / 35%);
-  border-radius:20px; padding:20px 22px; }
-.hpnode .t{ font-family:var(--font-display); font-weight:700; font-size:19px; color:var(--live); margin-bottom:8px; }
-.hpnode ul{ list-style:none; display:flex; flex-direction:column; gap:6px; }
-.hpnode li{ font-size:16px; color:var(--foreground); }
-.statband{ margin-top:22px; display:flex; align-items:baseline; gap:16px; justify-content:center;
-  border-top:1px solid var(--border); padding-top:18px; }
-.statband .big{ font-family:var(--font-display); font-weight:800; font-size:40px; color:var(--foreground); }
-.statband .lbl{ font-size:17px; color:var(--muted-foreground); }
+.impact .kicker{ margin-bottom:14px; }
+.impact h1.claim{ font-size:44px; line-height:1.05; max-width:22ch; }
+.impact h1.claim .flame{ color:var(--flame); }
+.why{ flex:1; margin-top:38px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:22px; align-content:center; }
+.why .card{ padding:30px 30px; display:flex; flex-direction:column; justify-content:center; min-height:180px; }
+.why .ic{ width:48px; height:48px; display:flex; align-items:center; justify-content:center;
+  border-radius:14px; background:var(--flame-soft); color:var(--flame); }
+.why .card:nth-child(2) .ic{ background:var(--live-soft); color:var(--live); }
+.why .card:nth-child(3) .ic{ background:#efedff; color:#635bff; }
+.why .ic svg{ width:28px; height:28px; stroke:currentColor; }
+.why .stripechip{ display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px;
+  border-radius:11px; background:#635bff; color:#fff; font-family:var(--font-display); font-weight:800; font-size:23px; letter-spacing:-.06em; }
+.why .h{ font-family:var(--font-display); font-weight:700; font-size:22px; margin-top:20px; line-height:1.2; }
+.why .h .flame{ color:var(--flame); }
+.why .h .card-emphasis{ font-style:italic; text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:4px; }
+.why .h .seed-emphasis{ color:var(--live); text-decoration-color:var(--live); }
+.why .h .stripe-emphasis{ color:#635bff; text-decoration-color:#635bff; }
+.impact .source{ margin-top:10px; font-family:var(--font-mono); font-size:11px; color:var(--muted-foreground); }
 
 /* ============================================================
    SLIDE 9 — how we built it
@@ -321,7 +320,7 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
     <!-- 2 · PAIN STEPPER -->
     <section class="slide" data-name="The pain" data-steps="5" style="--active-step:1">
       <div class="pain">
-      <h2 class="rise">Manual buying process on WhatsApp</h2>
+      <h2 class="rise">But... buying process was manual on WhatsApp</h2>
       <div class="body">
         <div class="steps">
           <div class="track"></div>
@@ -379,7 +378,7 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
     <!-- 3 · FOUR HATS -->
     <section class="slide" data-name="Four hats">
       <div class="center-head rise">
-        <h2>Its hard for sellers to manage.</h2>
+        <h2>Managing a live store daily is hard.</h2>
         <p>Day in the life of a seller.</p>
       </div>
       <div class="grid4">
@@ -410,7 +409,11 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
     <section class="slide" data-name="How might we">
       <div class="hmw">
         <div class="tag rise">How might we</div>
-        <h1 class="rise">make it <span class="flame">super easy</span> for people with a following to spin up a storefront for their fans?</h1>
+        <h1 class="rise">
+          <span class="hmw-line">Make it <span class="hmw-emphasis hmw-easy">super easy</span></span>
+          <span class="hmw-line">for <span class="hmw-emphasis hmw-following">people with a following</span></span>
+          <span class="hmw-line">to <span class="hmw-emphasis hmw-storefront">spin up a storefront for their fans?</span></span>
+        </h1>
       </div>
       <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">05</span></div>
     </section>
@@ -454,40 +457,23 @@ h2{ font-family:var(--font-display); font-weight:800; letter-spacing:-0.02em; li
     <!-- 8 · IMPACT / WEDGE -->
     <section class="slide" data-name="Impact">
       <div class="impact">
-        <div class="center-head rise">
-          <h2 style="font-size:40px;">Who it's for — and why it matters to HitPay.</h2>
-        </div>
-        <div class="wedge rise">
-          <div class="arch">
-            <div class="col-h">Selling off-platform today</div>
-            <div class="row"><span class="e">🧁</span> Home-based F&amp;B</div>
-            <div class="row"><span class="e">📱</span> Live-stream sellers</div>
-            <div class="row"><span class="e">🛒</span> Group-buys</div>
-            <div class="row"><span class="e">🎪</span> Pop-ups</div>
-            <div class="offtag">→ PayNow screenshots · off your rails</div>
+        <div class="kicker rise">Who it's for · why it matters to HitPay</div>
+        <h1 class="claim rise">HitPay’s next merchants are already selling—<span class="flame">just not on HitPay.</span></h1>
+        <div class="why rise">
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-9"/><path d="M15 6h6v6"/></svg></div>
+            <div class="h">Social-first selling is growing <span class="flame">80% YoY</span> in SEA</div>
           </div>
-          <div class="arrow">→</div>
-          <div class="linknode">
-            <div class="col-h">One drop link</div>
-            <div class="lp"><span class="qr">▦</span><span class="u">drops.sg/<span class="slug">…</span></span></div>
+          <div class="card">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20h10"/><path d="M10 20c5.5-2.5.8-6.4 3-10"/><path d="M9.5 9.4c1.1.8 1.8 2.2 2.3 3.7-2 .4-3.5.4-4.8-.3-1.2-.6-2.3-1.9-3-4.2 2.8-.5 4.4 0 5.5.8z"/><path d="M14.1 6a7 7 0 0 0-1.1 4c1.9-.1 3.3-.6 4.3-1.4 1-1 1.6-2.3 1.7-4.6-2.7.1-4 1-4.9 2z"/></svg></div>
+            <div class="h">Big businesses of tomorrow <span class="card-emphasis seed-emphasis">start small today</span></div>
           </div>
-          <div class="arrow">→</div>
-          <div>
-            <div class="col-h">Onto HitPay</div>
-            <div class="hpnode">
-              <div class="t">Payment volume</div>
-              <ul>
-                <li>Born as HitPay payment requests</li>
-                <li>Webhook-reconciled orders</li>
-                <li>Acquires the long tail you don't capture yet</li>
-              </ul>
-            </div>
+          <div class="card">
+            <div class="ic"><span class="stripechip">S</span></div>
+            <div class="h">Win them early, <span class="card-emphasis stripe-emphasis">ride the growth.</span></div>
           </div>
         </div>
-        <div class="statband rise">
-          <span class="big">≈ US$1.3B</span>
-          <span class="lbl">Singapore live commerce (DBS, 2025) — the market these sellers already serve.</span>
-        </div>
+        <div class="source rise">Google, Temasek &amp; Bain · e-Conomy SEA 2025 · video-commerce sellers &amp; stores, SEA-6</div>
       </div>
       <div class="foot"><span class="brand"><b>drops</b></span><span class="mono">08</span></div>
     </section>
