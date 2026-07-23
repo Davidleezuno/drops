@@ -35,7 +35,8 @@ export function ProductRow({
   return (
     <article
       className={cn(
-        "rounded-2xl border border-border bg-card p-4 transition-opacity",
+        "group/row relative rounded-2xl border border-border bg-card p-4 transition-[border-color,opacity]",
+        !soldOut && "hover:border-foreground/20",
         soldOut && "opacity-60",
         className
       )}
@@ -46,7 +47,7 @@ export function ProductRow({
             src={product.image_url}
             alt={`${product.name} product shot`}
             fill
-            className="object-cover"
+            className="object-cover transition-transform duration-300 motion-safe:group-hover/row:scale-[1.01]"
             sizes="(max-width: 448px) 100vw, 448px"
             priority={false}
           />
@@ -92,18 +93,22 @@ export function ProductRow({
         />
       </div>
 
-      <BuyFlow
-        productId={product.id}
-        productName={product.name}
-        unitPrice={product.price}
-        remaining={remaining}
-        inventoryChoiceName={product.inventory_choice_name}
-        variants={product.variants}
-        customizationGroups={product.customization_groups}
-        fulfilment={fulfilment}
-        deliveryFee={deliveryFee}
-        pickupNote={pickupNote}
-      />
+      {!soldOut && (
+        <BuyFlow
+          productId={product.id}
+          productName={product.name}
+          unitPrice={product.price}
+          remaining={remaining}
+          inventoryChoiceName={product.inventory_choice_name}
+          variants={product.variants}
+          customizationGroups={product.customization_groups}
+          fulfilment={fulfilment}
+          deliveryFee={deliveryFee}
+          pickupNote={pickupNote}
+          triggerClassName="absolute inset-0 z-10 rounded-2xl outline-none transition-colors duration-150 active:bg-foreground/[0.025] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-4 motion-reduce:transition-none"
+          triggerContent={<span className="sr-only">Buy {product.name}</span>}
+        />
+      )}
     </article>
   )
 }

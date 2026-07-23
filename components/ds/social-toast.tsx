@@ -14,7 +14,7 @@ function Quantity({ value }: { value: number }) {
  * Claim/paid announcements (future-ideas §1b): one bottom-anchored toast in
  * the same material as product cards. Max one visible — new events replace,
  * bursts arrive pre-coalesced from the hook. The flame dot marks money
- * landing and nothing else. Never blocks the Buy pill.
+ * landing and nothing else. Never blocks the active purchase card.
  */
 export function SocialToast({
   announcement,
