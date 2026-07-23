@@ -7,11 +7,13 @@ import type { Announcement } from '@/lib/use-drop-social'
 function announcementLine(announcement: Announcement | null) {
   if (!announcement) return null
   if (announcement.kind === 'summary') {
-    return `${announcement.count} ${announcement.paid ? 'sold' : 'claimed'} in the last minute`
+    return announcement.paid
+      ? null
+      : `${announcement.count} claimed in the last minute`
   }
-  const action = announcement.kind === 'paid' ? 'bought' : 'claimed'
+  if (announcement.kind === 'paid') return null
   const quantity = announcement.qty > 1 ? ` ×${announcement.qty}` : ''
-  return `${announcement.firstName} ${action} ${announcement.productName}${quantity}`
+  return `${announcement.firstName} claimed ${announcement.productName}${quantity}`
 }
 
 export function WallTicker({

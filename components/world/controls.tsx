@@ -49,6 +49,7 @@ export function PlayerControls({
   tint,
   reaction,
   enabled,
+  entering,
   onPose,
 }: {
   input: WorldInput
@@ -56,6 +57,7 @@ export function PlayerControls({
   tint: string
   reaction?: AvatarReaction
   enabled: boolean
+  entering: boolean
   onPose: (pose: WorldPose) => void
 }) {
   const group = useRef<Group>(null)
@@ -65,7 +67,12 @@ export function PlayerControls({
   const yaw = useRef(-0.5)
   const keys = useRef(new Set<string>())
   const velocity = useRef(new Vector3())
+  const entranceElapsed = useRef(0)
   const { camera, gl } = useThree()
+
+  useEffect(() => {
+    if (entering) entranceElapsed.current = 0
+  }, [entering])
 
   useEffect(() => {
     const canvas = gl.domElement
@@ -74,7 +81,7 @@ export function PlayerControls({
     let lastClientX = 0
 
     const down = (event: PointerEvent) => {
-      if (!enabled) return
+      if (!enabled || entering) return
       dragging = true
       pointerId = event.pointerId
       lastClientX = event.clientX
@@ -95,6 +102,7 @@ export function PlayerControls({
       const target = event.target as HTMLElement | null
       if (
         !enabled ||
+        entering ||
         target?.isContentEditable ||
         (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))
       ) {
@@ -121,31 +129,33 @@ export function PlayerControls({
       window.removeEventListener('keydown', keyDown)
       window.removeEventListener('keyup', keyUp)
     }
-  }, [enabled, gl, input])
+  }, [enabled, entering, gl, input])
 
   useEffect(() => {
-    if (enabled) return
+    if (enabled && !entering) return
     keys.current.clear()
     input.setMovement(0, 0)
-  }, [enabled, input])
+  }, [enabled, entering, input])
 
   useFrame((_, delta) => {
     const player = group.current
     if (!player) return
-    if (!enabled) return
 
-    yaw.current -= input.consumeLook() * 0.004
+    const interactive = enabled && !entering
+    if (interactive) yaw.current -= input.consumeLook() * 0.004
 
     const pressed = keys.current
     const movement = input.movement()
-    const forward =
-      movement.forward +
-      (pressed.has('w') || pressed.has('arrowup') ? 1 : 0) -
-      (pressed.has('s') || pressed.has('arrowdown') ? 1 : 0)
-    const right =
-      movement.right +
-      (pressed.has('d') || pressed.has('arrowright') ? 1 : 0) -
-      (pressed.has('a') || pressed.has('arrowleft') ? 1 : 0)
+    const forward = interactive
+      ? movement.forward +
+        (pressed.has('w') || pressed.has('arrowup') ? 1 : 0) -
+        (pressed.has('s') || pressed.has('arrowdown') ? 1 : 0)
+      : 0
+    const right = interactive
+      ? movement.right +
+        (pressed.has('d') || pressed.has('arrowright') ? 1 : 0) -
+        (pressed.has('a') || pressed.has('arrowleft') ? 1 : 0)
+      : 0
 
     velocity.current.set(
       Math.sin(yaw.current) * forward + Math.cos(yaw.current) * right,
@@ -155,14 +165,16 @@ export function PlayerControls({
     if (velocity.current.lengthSq() > 1) velocity.current.normalize()
     velocity.current.multiplyScalar(delta * 3.2)
 
-    player.position.x = Math.max(
-      -5.75,
-      Math.min(5.75, player.position.x + velocity.current.x),
-    )
-    player.position.z = Math.max(
-      -3.55,
-      Math.min(4.15, player.position.z + velocity.current.z),
-    )
+    if (interactive) {
+      player.position.x = Math.max(
+        -5.75,
+        Math.min(5.75, player.position.x + velocity.current.x),
+      )
+      player.position.z = Math.max(
+        -3.55,
+        Math.min(4.15, player.position.z + velocity.current.z),
+      )
+    }
     player.rotation.y = yaw.current
     player.rotation.z +=
       ((right === 0 ? 0 : -Math.sign(right) * 0.05) - player.rotation.z) *
@@ -173,7 +185,19 @@ export function PlayerControls({
       2.3,
       player.position.z + Math.cos(yaw.current) * 4.4,
     )
-    camera.position.lerp(cameraTarget, 1 - Math.exp(-delta * 8))
+    if (entering) {
+      entranceElapsed.current += delta
+      const progress = Math.min(1, entranceElapsed.current / 1.05)
+      const eased = 1 - Math.pow(1 - progress, 4)
+      const doorway = new Vector3(
+        cameraTarget.x - 0.2,
+        cameraTarget.y + 0.4,
+        cameraTarget.z + 3.2,
+      )
+      camera.position.lerpVectors(doorway, cameraTarget, eased)
+    } else {
+      camera.position.lerp(cameraTarget, 1 - Math.exp(-delta * 8))
+    }
     camera.lookAt(player.position.x, 0.72, player.position.z)
     onPose({ x: player.position.x, z: player.position.z, ry: yaw.current })
   })

@@ -74,6 +74,8 @@ export type ManageOrder = {
   buyer_contact: string
   fulfilment: 'pickup' | 'delivery'
   address: string | null
+  buyer_note: string | null
+  buyer_note_at: string | null
   amount: number
   status: OrderStatus
   paid_at: string | null

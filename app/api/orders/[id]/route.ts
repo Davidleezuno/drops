@@ -10,6 +10,7 @@ import type { OrderStatus } from '@/lib/types'
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const MAX_BUYER_NOTE_LENGTH = 180
 
 type OrderPaymentState = {
   id: string
@@ -152,4 +153,75 @@ export async function POST(
   }
 
   return statusResponse(settledOrder.status)
+}
+
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+  if (!UUID_PATTERN.test(id)) {
+    return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+  }
+
+  let body: unknown
+  try {
+    body = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Enter a note first' }, { status: 400 })
+  }
+
+  const note =
+    typeof body === 'object' &&
+    body !== null &&
+    'note' in body &&
+    typeof body.note === 'string'
+      ? body.note.trim()
+      : ''
+  if (!note || note.length > MAX_BUYER_NOTE_LENGTH) {
+    return NextResponse.json(
+      { error: `Note must be 1–${MAX_BUYER_NOTE_LENGTH} characters` },
+      { status: 400 },
+    )
+  }
+
+  const supabase = createServiceClient()
+  const noteAt = new Date().toISOString()
+  const { data: updated, error } = await supabase
+    .from('orders')
+    .update({ buyer_note: note, buyer_note_at: noteAt })
+    .eq('id', id)
+    .eq('status', 'PAID')
+    .is('buyer_note', null)
+    .select('id')
+    .maybeSingle<{ id: string }>()
+
+  if (error) {
+    console.error('Failed to save buyer note', error)
+    return NextResponse.json({ error: 'Could not send your note' }, { status: 500 })
+  }
+  if (!updated) {
+    const { data: order } = await supabase
+      .from('orders')
+      .select('status, buyer_note')
+      .eq('id', id)
+      .maybeSingle<{ status: OrderStatus; buyer_note: string | null }>()
+
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+    }
+    if (order.buyer_note) {
+      return NextResponse.json({ error: 'Your note was already sent' }, { status: 409 })
+    }
+    return NextResponse.json(
+      { error: 'Notes are available after payment is confirmed' },
+      { status: 409 },
+    )
+  }
+
+  // Re-broadcast the verified purchase with its newly attached appreciation.
+  // The room adds the note to its wall; payment state remains server-owned.
+  after(() => broadcastPaidOrder(id))
+
+  return NextResponse.json({ note })
 }

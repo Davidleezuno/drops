@@ -14,6 +14,7 @@ import { WatchingPill } from '@/components/ds/watching-pill'
 import { WorldGate } from '@/components/world/world-gate'
 import { allSoldOut as computeAllSoldOut } from '@/lib/drop-state'
 import { sgd } from '@/lib/format'
+import type { Appreciation } from '@/lib/social-events'
 import { createClient } from '@/lib/supabase/client'
 import type { Drop, Product } from '@/lib/types'
 import { useDropSocial } from '@/lib/use-drop-social'
@@ -57,11 +58,13 @@ export function DropStorefront({
   initialProducts,
   initialEnded,
   sceneConfig,
+  initialAppreciations,
 }: {
   drop: StorefrontDrop
   initialProducts: Product[]
   initialEnded: boolean
   sceneConfig: SceneConfig | null
+  initialAppreciations: Appreciation[]
 }) {
   const supabase = useMemo(() => createClient(), [])
   const [windowClosed, setWindowClosed] = useState(initialEnded)
@@ -71,7 +74,7 @@ export function DropStorefront({
     initialProducts,
     paused: windowClosed,
   })
-  const social = useDropSocial(supabase, drop.id)
+  const social = useDropSocial(supabase, drop.id, { initialAppreciations })
 
   const allSoldOut = computeAllSoldOut(products)
 
@@ -194,6 +197,7 @@ export function DropStorefront({
       products={products}
       windowClosed={windowClosed}
       announcement={social.announcement}
+      appreciations={social.appreciations}
       socialPresenceKey={social.presenceKey}
       react={social.react}
       subscribeToReactionEvents={social.subscribeToReactionEvents}

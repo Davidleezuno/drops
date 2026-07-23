@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   isReactionEmoji,
   socialTopic,
+  type Appreciation,
   type ReactionEmoji,
 } from '@/lib/social-events'
 import { presenceKey } from '@/lib/world/names'
@@ -17,6 +18,7 @@ export type Announcement =
       firstName: string
       productName: string
       qty: number
+      note?: string
     }
   | { id: number; kind: 'summary'; paid: boolean; count: number }
 
@@ -30,6 +32,8 @@ type SocialEventPayload = {
   firstName?: unknown
   productName?: unknown
   qty?: unknown
+  note?: unknown
+  at?: unknown
 }
 
 export type ReactionEvent = { emoji: ReactionEmoji; key?: string }
@@ -43,10 +47,14 @@ export type ReactionEvent = { emoji: ReactionEmoji; key?: string }
 export function useDropSocial(
   supabase: SupabaseClient,
   dropId: string,
-  { present = true }: { present?: boolean } = {},
+  {
+    present = true,
+    initialAppreciations = [],
+  }: { present?: boolean; initialAppreciations?: Appreciation[] } = {},
 ) {
   const [watching, setWatching] = useState(0)
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
+  const [appreciations, setAppreciations] = useState(initialAppreciations)
   const [sessionKey] = useState<string | null>(() =>
     typeof window === 'undefined' ? null : presenceKey(),
   )
@@ -72,6 +80,22 @@ export function useDropSocial(
         typeof payload?.qty === 'number' && payload.qty > 0 ? payload.qty : 1
       if (!productName) return
 
+      const note =
+        typeof payload?.note === 'string' ? payload.note.trim().slice(0, 180) : ''
+      if (kind === 'paid' && note) {
+        const noteId =
+          typeof payload?.at === 'string' && payload.at
+            ? payload.at
+            : `${Date.now()}-${firstName}`
+        setAppreciations((current) => {
+          if (current.some((item) => item.id === noteId)) return current
+          return [
+            { id: noteId, firstName, productName, note },
+            ...current,
+          ].slice(0, 12)
+        })
+      }
+
       const now = Date.now()
       const recent = recentEventsRef.current
         .filter((event) => now - event.at < COALESCE_WINDOW_MS)
@@ -84,20 +108,27 @@ export function useDropSocial(
       // A burst collapses to one honest summary line; money is the louder
       // signal, so paid events win the wording.
       setAnnouncement(
-        recent.length > COALESCE_THRESHOLD
+        recent.length > COALESCE_THRESHOLD && !note
           ? {
               id,
               kind: 'summary',
               paid: paidCount > 0,
               count: paidCount > 0 ? paidCount : recent.length,
             }
-          : { id, kind, firstName, productName, qty },
+          : {
+              id,
+              kind,
+              firstName,
+              productName,
+              qty,
+              ...(kind === 'paid' && note ? { note } : {}),
+            },
       )
 
       window.clearTimeout(dismissTimerRef.current)
       dismissTimerRef.current = window.setTimeout(
         () => setAnnouncement(null),
-        ANNOUNCEMENT_TTL_MS,
+        note ? 6_000 : ANNOUNCEMENT_TTL_MS,
       )
     },
     [],
@@ -206,6 +237,7 @@ export function useDropSocial(
   return {
     watching,
     announcement,
+    appreciations,
     presenceKey: sessionKey,
     react,
     subscribeToReactions,

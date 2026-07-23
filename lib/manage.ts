@@ -18,6 +18,8 @@ type OrderRow = {
   buyer_contact: string
   fulfilment: 'pickup' | 'delivery'
   address: string | null
+  buyer_note: string | null
+  buyer_note_at: string | null
   amount: number
   status: OrderStatus
   paid_at: string | null
@@ -72,7 +74,7 @@ export async function getManageSnapshot(
     const { data: orders, error: ordersError } = await supabase
       .from('orders')
       .select(
-        'id, product_id, product_variant_id, selected_customizations, qty, buyer_name, buyer_contact, fulfilment, address, amount, status, paid_at, created_at',
+        'id, product_id, product_variant_id, selected_customizations, qty, buyer_name, buyer_contact, fulfilment, address, buyer_note, buyer_note_at, amount, status, paid_at, created_at',
       )
       .in('product_id', productIds)
       .order('created_at', { ascending: false })

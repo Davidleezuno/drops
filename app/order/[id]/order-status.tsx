@@ -1,7 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { type FormEvent, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { LayoutGrid, Store } from 'lucide-react'
 
+import { Button } from '@/components/ui/button'
 import { Poster } from '@/components/ds/poster'
 import { Price } from '@/components/ds/price'
 import { StatusPill } from '@/components/ds/status-pill'
@@ -13,11 +16,13 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Textarea } from '@/components/ui/textarea'
 import type { OrderStatus as PaymentStatus } from '@/lib/types'
 
 const STATUS_POLL_INTERVAL_MS = 2_000
 const FALLBACK_DELAY_MS = 10_000
 const FALLBACK_RETRY_INTERVAL_MS = 10_000
+const MAX_BUYER_NOTE_LENGTH = 180
 
 export type BuyerOrder = {
   id: string
@@ -28,11 +33,45 @@ export type BuyerOrder = {
   amount: number
   fulfilment: 'pickup' | 'delivery'
   sellerName: string
+  buyerNote: string | null
+  storePath: string
 }
 
 export function OrderStatus({ order }: { order: BuyerOrder }) {
   const [status, setStatus] = useState(order.status)
   const [waitingLonger, setWaitingLonger] = useState(false)
+  const [buyerNote, setBuyerNote] = useState(order.buyerNote)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [noteError, setNoteError] = useState<string | null>(null)
+  const [sendingNote, setSendingNote] = useState(false)
+
+  async function sendNote(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const note = noteDraft.trim()
+    if (!note || sendingNote) return
+
+    setSendingNote(true)
+    setNoteError(null)
+    try {
+      const response = await fetch(`/api/orders/${order.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note }),
+      })
+      const result = (await response.json()) as { note?: string; error?: string }
+      if (!response.ok || !result.note) {
+        throw new Error(result.error ?? 'Could not send your note')
+      }
+      setBuyerNote(result.note)
+      setNoteDraft('')
+    } catch (caught) {
+      setNoteError(
+        caught instanceof Error ? caught.message : 'Could not send your note',
+      )
+    } finally {
+      setSendingNote(false)
+    }
+  }
 
   useEffect(() => {
     if (status !== 'PENDING') return
@@ -122,9 +161,97 @@ export function OrderStatus({ order }: { order: BuyerOrder }) {
         )}
 
         {status === 'PAID' && (
-          <Poster variant="paid" title="Paid ✓" className="py-12">
-            {order.sellerName} has your order. Keep this page for your records.
-          </Poster>
+          <>
+            <Poster variant="paid" title="Paid ✓" className="py-12">
+              {order.sellerName} has your order. Keep this page for your records.
+            </Poster>
+
+            <nav
+              aria-label="Continue shopping"
+              className="mt-4 grid gap-2 sm:grid-cols-2"
+            >
+              <Button
+                size="lg"
+                nativeButton={false}
+                render={<Link href={order.storePath} />}
+                className="h-11"
+              >
+                <Store />
+                Return to store
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                nativeButton={false}
+                render={<Link href={`${order.storePath}?list=1`} />}
+                className="h-11 bg-background"
+              >
+                <LayoutGrid />
+                Browse other items
+              </Button>
+            </nav>
+
+            <Card className="mt-6 overflow-hidden border-flame/20 bg-flame-soft/45">
+              <CardHeader>
+                <p className="font-mono text-[10px] tracking-[0.18em] text-flame uppercase">
+                  Wall of appreciation
+                </p>
+                <CardTitle className="font-display text-2xl">
+                  Leave a note for {order.sellerName}
+                </CardTitle>
+                <CardDescription className="max-w-sm leading-relaxed">
+                  A short thank-you will appear in the store for other shoppers
+                  to see. Don&rsquo;t include private information.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {buyerNote ? (
+                  <div role="status" className="rounded-xl border border-live/20 bg-white/75 p-4">
+                    <p className="font-medium">Your note is on the wall.</p>
+                    <p className="mt-2 text-sm leading-relaxed text-foreground/70">
+                      &ldquo;{buyerNote}&rdquo;
+                    </p>
+                  </div>
+                ) : (
+                  <form onSubmit={sendNote} className="space-y-3">
+                    <label htmlFor="buyer-note" className="sr-only">
+                      Note to seller
+                    </label>
+                    <Textarea
+                      id="buyer-note"
+                      value={noteDraft}
+                      maxLength={MAX_BUYER_NOTE_LENGTH}
+                      rows={3}
+                      placeholder="Loved this drop — can’t wait to receive it!"
+                      className="min-h-24 resize-none bg-white/80"
+                      aria-describedby="buyer-note-help buyer-note-status"
+                      aria-invalid={Boolean(noteError)}
+                      onChange={(event) => setNoteDraft(event.target.value)}
+                    />
+                    <div className="flex items-center justify-between gap-4">
+                      <p id="buyer-note-help" className="font-mono text-[10px] text-muted-foreground tabular-nums">
+                        {noteDraft.length}/{MAX_BUYER_NOTE_LENGTH}
+                      </p>
+                      <Button
+                        type="submit"
+                        size="lg"
+                        disabled={!noteDraft.trim() || sendingNote}
+                      >
+                        {sendingNote ? 'Sending…' : 'Add to the wall'}
+                      </Button>
+                    </div>
+                    <p
+                      id="buyer-note-status"
+                      role="status"
+                      className="min-h-5 text-sm text-destructive"
+                    >
+                      {noteError}
+                    </p>
+                  </form>
+                )}
+              </CardContent>
+            </Card>
+          </>
         )}
 
         {status === 'PAID_LATE' && (

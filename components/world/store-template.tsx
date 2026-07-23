@@ -5,6 +5,7 @@ import { useMemo } from 'react'
 import { Shape, ShapeGeometry } from 'three'
 
 import type { Product } from '@/lib/types'
+import type { Appreciation } from '@/lib/social-events'
 import type { Announcement } from '@/lib/use-drop-social'
 import type { SceneConfig } from '@/lib/world/scene-config'
 
@@ -24,6 +25,7 @@ import {
 } from './shophouse-decor'
 import { StoreSign } from './store-sign'
 import { WallTicker } from './wall-ticker'
+import { WallOfAppreciation } from './wall-of-appreciation'
 
 const ROOM = { width: 12, depth: 9, height: 3.5 } as const
 const DOOR = { x: -3.2, width: 1.5, height: 2.35 } as const
@@ -435,6 +437,7 @@ export function StoreTemplate({
   accent,
   windowClosed,
   announcement,
+  appreciations,
   shadows,
   onSelectProduct,
 }: {
@@ -443,6 +446,7 @@ export function StoreTemplate({
   accent: string
   windowClosed: boolean
   announcement: Announcement | null
+  appreciations: Appreciation[]
   shadows: boolean
   onSelectProduct: (product: Product) => void
 }) {
@@ -467,6 +471,11 @@ export function StoreTemplate({
         scale={0.72}
       />
       <WallTicker announcement={announcement} position={[0, 1.18, -4.29]} />
+      <WallOfAppreciation
+        key={appreciations[0]?.id ?? 'empty-wall'}
+        appreciations={appreciations}
+        accent={accent}
+      />
 
       {config.stations.map((station) => {
         const placement = STATION_PLACEMENTS[station.zone]

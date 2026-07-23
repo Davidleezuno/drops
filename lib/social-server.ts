@@ -52,11 +52,13 @@ export async function broadcastPaidOrder(orderId: string) {
   const supabase = createServiceClient()
   const { data: order, error } = await supabase
     .from('orders')
-    .select('qty, buyer_name, product:products(name, drop_id)')
+    .select('qty, buyer_name, buyer_note, buyer_note_at, product:products(name, drop_id)')
     .eq('id', orderId)
     .maybeSingle<{
       qty: number
       buyer_name: string
+      buyer_note: string | null
+      buyer_note_at: string | null
       product: { name: string; drop_id: string } | null
     }>()
 
@@ -70,6 +72,7 @@ export async function broadcastPaidOrder(orderId: string) {
     firstName: firstNameOnly(order.buyer_name),
     productName: order.product.name,
     qty: order.qty,
-    at: new Date().toISOString(),
+    ...(order.buyer_note ? { note: order.buyer_note } : {}),
+    at: order.buyer_note_at ?? new Date().toISOString(),
   })
 }

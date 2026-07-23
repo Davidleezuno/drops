@@ -114,12 +114,15 @@ function packingText(snapshot: ManageSnapshot, items: PackingItem[]) {
 }
 
 function fulfilmentText(snapshot: ManageSnapshot, orders: ManageOrder[]) {
-  const lines = orders.flatMap((order, index) => [
-    `${index + 1}. ${order.buyer_name} — ${productLabel(order)} × ${order.qty}`,
-    `   ${order.buyer_contact}`,
-    `   ${orderFulfilment(order, snapshot.drop.pickup_note)}`,
-    '',
-  ])
+  const lines = orders.flatMap((order, index) => {
+    const details = [
+      `${index + 1}. ${order.buyer_name} — ${productLabel(order)} × ${order.qty}`,
+      `   ${order.buyer_contact}`,
+      `   ${orderFulfilment(order, snapshot.drop.pickup_note)}`,
+    ]
+    if (order.buyer_note) details.push(`   Note: ${order.buyer_note}`)
+    return [...details, '']
+  })
 
   return [
     `${snapshot.drop.seller_name} — ${snapshot.drop.drop_slug}`,
@@ -619,6 +622,11 @@ export function ManageConsole({
                           <p className="mt-1 text-sm leading-relaxed text-foreground/70">
                             {orderFulfilment(order, snapshot.drop.pickup_note)}
                           </p>
+                          {order.buyer_note && (
+                            <blockquote className="mt-2 border-l-2 border-flame/40 pl-3 text-sm leading-relaxed text-foreground/75 italic">
+                              &ldquo;{order.buyer_note}&rdquo;
+                            </blockquote>
+                          )}
                         </div>
                       </div>
                     </li>

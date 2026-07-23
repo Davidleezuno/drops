@@ -15,12 +15,15 @@ type OrderWithProduct = {
   status: PaymentStatus
   fulfilment: 'pickup' | 'delivery'
   selected_customizations: Record<string, string>
+  buyer_note: string | null
   inventory_variant: { label: string | null }
   product: {
     name: string
     variant: string | null
     drop: {
       seller_name: string
+      seller_slug: string
+      drop_slug: string
     }
   }
 }
@@ -35,7 +38,7 @@ export default async function OrderPage({
   const { data: order, error } = await supabase
     .from('orders')
     .select(
-      'id, qty, amount, status, fulfilment, selected_customizations, inventory_variant:product_variants!orders_product_variant_id_fkey(label), product:products!inner(name, variant, drop:drops!inner(seller_name))',
+      'id, qty, amount, status, fulfilment, selected_customizations, buyer_note, inventory_variant:product_variants!orders_product_variant_id_fkey(label), product:products!inner(name, variant, drop:drops!inner(seller_name, seller_slug, drop_slug))',
     )
     .eq('id', id)
     .maybeSingle<OrderWithProduct>()
@@ -64,6 +67,8 @@ export default async function OrderPage({
           amount: order.amount,
           fulfilment: order.fulfilment,
           sellerName: order.product.drop.seller_name,
+          buyerNote: order.buyer_note,
+          storePath: `/${encodeURIComponent(order.product.drop.seller_slug)}/${encodeURIComponent(order.product.drop.drop_slug)}`,
         }}
       />
 

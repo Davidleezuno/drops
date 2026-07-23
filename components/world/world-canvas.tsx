@@ -1,13 +1,14 @@
 'use client'
 
 import { Canvas } from '@react-three/fiber'
-import { List, Move, MousePointer2, X } from 'lucide-react'
+import { Check, List, Move, MousePointer2, X } from 'lucide-react'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 
 import { BuyFlow } from '@/components/ds/buy-flow'
 import { stockRemaining } from '@/lib/drop-state'
 import {
   REACTION_EMOJI,
+  type Appreciation,
   type ReactionEmoji,
 } from '@/lib/social-events'
 import { createClient } from '@/lib/supabase/client'
@@ -46,13 +47,56 @@ export type WorldCanvasProps = {
   products: Product[]
   windowClosed: boolean
   announcement: Announcement | null
+  appreciations: Appreciation[]
   socialPresenceKey: string | null
   react: (emoji: ReactionEmoji) => void
   subscribeToReactionEvents: (
     listener: (event: ReactionEvent) => void,
   ) => () => void
+  entering: boolean
   onExit: () => void
   onReady: () => void
+}
+
+function PurchaseBanner({ announcement }: { announcement: Announcement | null }) {
+  if (
+    !announcement ||
+    (announcement.kind !== 'paid' &&
+      !(announcement.kind === 'summary' && announcement.paid))
+  ) {
+    return null
+  }
+
+  const isSummary = announcement.kind === 'summary'
+  return (
+    <div
+      key={announcement.id}
+      role="status"
+      aria-live="polite"
+      className="motion-safe:animate-rise pointer-events-none absolute top-[calc(env(safe-area-inset-top)+5.25rem)] left-1/2 z-30 w-[min(24rem,calc(100%-2rem))] -translate-x-1/2 overflow-hidden rounded-2xl border border-white/20 bg-[#2d2925]/95 px-4 py-3 text-white shadow-2xl backdrop-blur-md"
+    >
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full bg-live text-white">
+          <Check className="size-4" strokeWidth={2.5} />
+        </span>
+        <div className="min-w-0">
+          <p className="font-mono text-[9px] tracking-[0.18em] text-white/55 uppercase">
+            Just purchased
+          </p>
+          <p className="mt-0.5 truncate text-sm font-semibold">
+            {isSummary
+              ? `${announcement.count} items sold in the last minute`
+              : `${announcement.firstName} bought ${announcement.productName}${announcement.qty > 1 ? ` ×${announcement.qty}` : ''}`}
+          </p>
+          {!isSummary && announcement.note && (
+            <p className="mt-2 line-clamp-2 border-l-2 border-flame pl-3 font-serif text-sm leading-snug text-white/80 italic">
+              &ldquo;{announcement.note}&rdquo;
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function WorldReactionBar({ react }: { react: (emoji: ReactionEmoji) => void }) {
@@ -129,9 +173,11 @@ export function WorldCanvas({
   products,
   windowClosed,
   announcement,
+  appreciations,
   socialPresenceKey,
   react,
   subscribeToReactionEvents,
+  entering,
   onExit,
   onReady,
 }: WorldCanvasProps) {
@@ -204,6 +250,7 @@ export function WorldCanvas({
             accent={accent}
             windowClosed={windowClosed}
             announcement={announcement}
+            appreciations={appreciations}
             shadows={!mobile}
             onSelectProduct={(product) => setSelectedId(product.id)}
           />
@@ -221,12 +268,17 @@ export function WorldCanvas({
             tint={presence.identity.tint}
             reaction={reactions[key]}
             enabled={!selectedProduct}
+            entering={entering}
             onPose={presence.broadcastPose}
           />
         </Suspense>
       </Canvas>
 
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4 pt-[calc(env(safe-area-inset-top)+1rem)]">
+      {!entering && <PurchaseBanner announcement={announcement} />}
+
+      <div
+        className={`pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-4 pt-[calc(env(safe-area-inset-top)+1rem)] transition-opacity duration-500 ${entering ? 'opacity-0' : 'opacity-100'}`}
+      >
         <div className="rounded-2xl border border-white/35 bg-white/90 px-3.5 py-2 shadow-lg backdrop-blur-sm">
           <p className="max-w-48 truncate text-sm font-semibold">{config.sign.title}</p>
           <p className="mt-0.5 font-mono text-[10px] text-black/55 tabular-nums">
@@ -243,7 +295,9 @@ export function WorldCanvas({
         </button>
       </div>
 
-      <div className="pointer-events-none absolute bottom-5 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-3 rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs text-white backdrop-blur-sm md:flex">
+      <div
+        className={`pointer-events-none absolute bottom-5 left-1/2 z-20 hidden -translate-x-1/2 items-center gap-3 rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs text-white backdrop-blur-sm transition-opacity duration-500 md:flex ${entering ? 'opacity-0' : 'opacity-100'}`}
+      >
         <span className="inline-flex items-center gap-1.5">
           <Move className="size-3.5" /> WASD to walk
         </span>
@@ -253,8 +307,8 @@ export function WorldCanvas({
         </span>
       </div>
 
-      {!selectedProduct && <MobileJoystick input={input} />}
-      <WorldReactionBar react={react} />
+      {!selectedProduct && !entering && <MobileJoystick input={input} />}
+      {!entering && <WorldReactionBar react={react} />}
       {selectedProduct && (
         <WorldCheckout
           product={selectedProduct}
