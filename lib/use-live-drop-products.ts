@@ -1,7 +1,7 @@
 'use client'
 
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { allSoldOut } from '@/lib/drop-state'
 import type { Product, ProductVariant } from '@/lib/types'
@@ -30,14 +30,21 @@ export function useLiveDropProducts({
   dropId,
   initialProducts,
   paused,
+  onPaidStockChange,
 }: {
   supabase: SupabaseClient
   dropId: string
   initialProducts: Product[]
   paused: boolean
+  onPaidStockChange?: (productName: string, quantity: number) => void
 }) {
   const [products, setProducts] = useState(initialProducts)
+  const productsRef = useRef(initialProducts)
   const soldOut = allSoldOut(products)
+
+  useEffect(() => {
+    productsRef.current = products
+  }, [products])
 
   useEffect(() => {
     if (paused || soldOut) return
@@ -58,11 +65,18 @@ export function useLiveDropProducts({
         return
       }
 
-      setProducts((current) =>
-        current.map((product) => {
-          const incoming = data.find((candidate) => candidate.id === product.id)
-          return incoming ? mergeLiveProduct(product, incoming) : product
-        }),
+      const announcements: Array<{ name: string; quantity: number }> = []
+      const next = productsRef.current.map((product) => {
+        const incoming = data.find((candidate) => candidate.id === product.id)
+        if (!incoming) return product
+        const quantity = Math.max(0, incoming.stock_sold - product.stock_sold)
+        if (quantity > 0) announcements.push({ name: product.name, quantity })
+        return mergeLiveProduct(product, incoming)
+      })
+      productsRef.current = next
+      setProducts(next)
+      announcements.forEach(({ name, quantity }) =>
+        onPaidStockChange?.(name, quantity),
       )
     }
 
@@ -79,13 +93,22 @@ export function useLiveDropProducts({
         (payload) => {
           const incoming = payload.new as Product
           if (incoming.drop_id !== dropId) return
-          setProducts((current) =>
-            current.map((product) =>
-              product.id === incoming.id
-                ? mergeLiveProduct(product, incoming)
-                : product,
-            ),
+          const currentProduct = productsRef.current.find(
+            (product) => product.id === incoming.id,
           )
+          const quantity = currentProduct
+            ? Math.max(0, incoming.stock_sold - currentProduct.stock_sold)
+            : 0
+          const next = productsRef.current.map((product) =>
+            product.id === incoming.id
+              ? mergeLiveProduct(product, incoming)
+              : product,
+          )
+          productsRef.current = next
+          setProducts(next)
+          if (quantity > 0 && currentProduct) {
+            onPaidStockChange?.(currentProduct.name, quantity)
+          }
         },
       )
       .on(
@@ -97,20 +120,20 @@ export function useLiveDropProducts({
         },
         (payload) => {
           const incoming = payload.new as ProductVariant
-          setProducts((current) =>
-            current.map((product) =>
-              product.id !== incoming.product_id
-                ? product
-                : {
-                    ...product,
-                    variants: product.variants.map((variant) =>
-                      variant.id === incoming.id
-                        ? mergeLiveVariant(variant, incoming)
-                        : variant,
-                    ),
-                  },
-            ),
+          const next = productsRef.current.map((product) =>
+            product.id !== incoming.product_id
+              ? product
+              : {
+                  ...product,
+                  variants: product.variants.map((variant) =>
+                    variant.id === incoming.id
+                      ? mergeLiveVariant(variant, incoming)
+                      : variant,
+                  ),
+                },
           )
+          productsRef.current = next
+          setProducts(next)
         },
       )
       .subscribe((status, error) => {
@@ -136,7 +159,7 @@ export function useLiveDropProducts({
       document.removeEventListener('visibilitychange', refreshWhenVisible)
       void supabase.removeChannel(channel)
     }
-  }, [dropId, paused, soldOut, supabase])
+  }, [dropId, onPaidStockChange, paused, soldOut, supabase])
 
   return products
 }

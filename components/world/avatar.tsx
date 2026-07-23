@@ -89,15 +89,29 @@ export function RemoteAvatar({
   useFrame((_, delta) => {
     const target = poses.current?.get(shopper.key)
     if (!group.current || !target) return
+    const ageSeconds = Math.min(
+      2.25,
+      Math.max(0, (performance.now() - (target.receivedAt ?? 0)) / 1_000),
+    )
+    const targetX = Math.max(
+      -5.75,
+      Math.min(5.75, target.x + (target.vx ?? 0) * ageSeconds),
+    )
+    const targetZ = Math.max(
+      -3.55,
+      Math.min(4.15, target.z + (target.vz ?? 0) * ageSeconds),
+    )
     if (!snapped.current) {
       snapped.current = true
-      group.current.position.set(target.x, 0, target.z)
+      group.current.position.set(targetX, 0, targetZ)
       group.current.rotation.y = target.ry
       return
     }
-    const alpha = 1 - Math.exp(-delta * 10)
-    group.current.position.x += (target.x - group.current.position.x) * alpha
-    group.current.position.z += (target.z - group.current.position.z) * alpha
+    const alpha = 1 - Math.exp(-delta * 6)
+    group.current.position.x +=
+      (targetX - group.current.position.x) * alpha
+    group.current.position.z +=
+      (targetZ - group.current.position.z) * alpha
     group.current.rotation.y +=
       shortestAngle(group.current.rotation.y, target.ry) * alpha
   })

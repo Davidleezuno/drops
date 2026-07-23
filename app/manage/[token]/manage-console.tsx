@@ -17,7 +17,6 @@ import { LivePill } from '@/components/ds/live-pill'
 import { Price } from '@/components/ds/price'
 import { StatusPill } from '@/components/ds/status-pill'
 import { StockBadge } from '@/components/ds/stock-badge'
-import { WatchingPill } from '@/components/ds/watching-pill'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
@@ -44,7 +43,6 @@ import {
 import { siteHost } from '@/lib/format'
 import { createClient } from '@/lib/supabase/client'
 import type { ManageOrder, ManageSnapshot, Product } from '@/lib/types'
-import { useDropSocial } from '@/lib/use-drop-social'
 
 const ORDER_POLL_INTERVAL_MS = 2_000
 
@@ -178,9 +176,6 @@ export function ManageConsole({
   const [ending, setEnding] = useState(false)
   const [converting, setConverting] = useState(false)
   const refreshing = useRef(false)
-  // Observe the crowd without counting the seller as a watcher.
-  const social = useDropSocial(supabase, snapshot.drop.id, { present: false })
-
   const refreshConsole = useCallback(async () => {
     if (refreshing.current) return
     refreshing.current = true
@@ -387,7 +382,6 @@ export function ManageConsole({
           ) : (
             <LivePill>Always open</LivePill>
           )}
-          <WatchingPill count={social.watching} />
           {snapshot.drop.window_ends_at ? (
             <span className="font-mono text-xs text-muted-foreground">
               closes{' '}

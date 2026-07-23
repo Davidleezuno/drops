@@ -1,14 +1,9 @@
 'use client'
 
-import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import {
-  isReactionEmoji,
-  socialTopic,
-  type Appreciation,
-  type ReactionEmoji,
-} from '@/lib/social-events'
+import { socialTopic, type Appreciation } from '@/lib/social-events'
 import { presenceKey } from '@/lib/world/names'
 
 export type Announcement =
@@ -26,7 +21,6 @@ const ANNOUNCEMENT_TTL_MS = 4_000
 const COALESCE_WINDOW_MS = 30_000
 // More than this many events inside the window collapses to a summary line.
 const COALESCE_THRESHOLD = 2
-const REACT_MIN_INTERVAL_MS = 250
 
 type SocialEventPayload = {
   firstName?: unknown
@@ -36,38 +30,30 @@ type SocialEventPayload = {
   at?: unknown
 }
 
-export type ReactionEvent = { emoji: ReactionEmoji; key?: string }
-
 /**
- * The drop page's social nervous system (future-ideas §2): presence-backed
- * viewer count, server-emitted claim/paid announcements (one visible toast,
- * bursts coalesced), and best-effort emoji reactions. Everything degrades to
- * silence — if the websocket is blocked the page renders exactly as v1.
+ * Purchase announcements come from paid stock changes. Stock already fans out
+ * to every storefront, so ordinary banners add no second Realtime broadcast.
+ * A buyer-authored note uses one rare broadcast to update the appreciation wall.
+ *
+ * Global storefront presence is intentionally disabled on the Free tier. Only
+ * the capped 3D room opens a presence connection.
  */
 export function useDropSocial(
   supabase: SupabaseClient,
   dropId: string,
   {
-    present = true,
     initialAppreciations = [],
-  }: { present?: boolean; initialAppreciations?: Appreciation[] } = {},
+  }: { initialAppreciations?: Appreciation[] } = {},
 ) {
-  const [watching, setWatching] = useState(0)
   const [announcement, setAnnouncement] = useState<Announcement | null>(null)
   const [appreciations, setAppreciations] = useState(initialAppreciations)
   const [sessionKey] = useState<string | null>(() =>
     typeof window === 'undefined' ? null : presenceKey(),
   )
 
-  const channelRef = useRef<RealtimeChannel | null>(null)
   const recentEventsRef = useRef<{ paid: boolean; at: number }[]>([])
   const nextIdRef = useRef(1)
   const dismissTimerRef = useRef<number | undefined>(undefined)
-  const lastReactAtRef = useRef(0)
-  const reactionListenersRef = useRef(new Set<(emoji: ReactionEmoji) => void>())
-  const reactionEventListenersRef = useRef(
-    new Set<(event: ReactionEvent) => void>(),
-  )
   const showAnnouncement = useCallback(
     (kind: 'claim' | 'paid', payload: SocialEventPayload | undefined) => {
       const firstName =
@@ -135,112 +121,36 @@ export function useDropSocial(
   )
 
   useEffect(() => {
-    if (present && !sessionKey) return
-
-    let channel: RealtimeChannel | undefined
-
-    try {
-      channel = supabase.channel(
-        socialTopic(dropId),
-        present && sessionKey
-          ? { config: { presence: { key: sessionKey } } }
-          : undefined,
-      )
-
-      channel
-        .on('presence', { event: 'sync' }, () => {
-          setWatching(Object.keys(channel!.presenceState()).length)
-        })
-        .on('broadcast', { event: 'claim' }, ({ payload }) =>
-          showAnnouncement('claim', payload as SocialEventPayload),
-        )
-        .on('broadcast', { event: 'paid' }, ({ payload }) =>
-          showAnnouncement('paid', payload as SocialEventPayload),
-        )
-        .on('broadcast', { event: 'react' }, ({ payload }) => {
-          const reaction = payload as
-            | { emoji?: unknown; key?: unknown }
-            | undefined
-          const emoji = reaction?.emoji
-          if (!isReactionEmoji(emoji)) return
-          reactionListenersRef.current.forEach((listener) => listener(emoji))
-          reactionEventListenersRef.current.forEach((listener) =>
-            listener({
-              emoji,
-              key: typeof reaction?.key === 'string' ? reaction.key : undefined,
-            }),
-          )
-        })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED' && present) {
-            void channel!.track({ at: new Date().toISOString() })
-          }
-        })
-
-      channelRef.current = channel
-    } catch (caught) {
-      // Venue wifi or a strict browser blocked the websocket — the social
-      // layer is silently absent and the page renders as v1.
-      console.warn('Social layer unavailable', caught)
-    }
+    const channel = supabase
+      .channel(socialTopic(dropId))
+      .on('broadcast', { event: 'paid' }, ({ payload }) => {
+        const event = payload as SocialEventPayload | undefined
+        if (typeof event?.note !== 'string' || !event.note.trim()) return
+        showAnnouncement('paid', event)
+      })
+      .subscribe()
 
     return () => {
-      channelRef.current = null
       window.clearTimeout(dismissTimerRef.current)
-      if (channel) void supabase.removeChannel(channel)
+      void supabase.removeChannel(channel)
     }
-  }, [supabase, dropId, present, sessionKey, showAnnouncement])
+  }, [dropId, showAnnouncement, supabase])
 
-  const react = useCallback((emoji: ReactionEmoji) => {
-    const now = Date.now()
-    if (now - lastReactAtRef.current < REACT_MIN_INTERVAL_MS) return
-    lastReactAtRef.current = now
-
-    // Broadcast doesn't echo to self — mirror locally so your own reaction
-    // floats even when nobody else is in the room.
-    reactionListenersRef.current.forEach((listener) => listener(emoji))
-    reactionEventListenersRef.current.forEach((listener) =>
-      listener({ emoji, key: sessionKey ?? undefined }),
-    )
-    void channelRef.current?.send({
-      type: 'broadcast',
-      event: 'react',
-      payload: {
-        type: 'react',
-        emoji,
-        at: new Date().toISOString(),
-        key: sessionKey ?? undefined,
-      },
-    })
-  }, [sessionKey])
-
-  const subscribeToReactions = useCallback(
-    (listener: (emoji: ReactionEmoji) => void) => {
-      reactionListenersRef.current.add(listener)
-      return () => {
-        reactionListenersRef.current.delete(listener)
-      }
-    },
-    [],
-  )
-
-  const subscribeToReactionEvents = useCallback(
-    (listener: (event: ReactionEvent) => void) => {
-      reactionEventListenersRef.current.add(listener)
-      return () => {
-        reactionEventListenersRef.current.delete(listener)
-      }
-    },
-    [],
+  const announcePaid = useCallback(
+    (productName: string, qty: number) =>
+      showAnnouncement('paid', {
+        firstName: 'Someone',
+        productName,
+        qty,
+      }),
+    [showAnnouncement],
   )
 
   return {
-    watching,
+    watching: 0,
     announcement,
     appreciations,
     presenceKey: sessionKey,
-    react,
-    subscribeToReactions,
-    subscribeToReactionEvents,
+    announcePaid,
   }
 }

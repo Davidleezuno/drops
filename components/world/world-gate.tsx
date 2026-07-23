@@ -1,6 +1,6 @@
 'use client'
 
-import { DoorOpen } from 'lucide-react'
+import { DoorOpen, Users } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import {
   type ReactNode,
@@ -37,7 +37,10 @@ export function WorldGate({
   config,
   fallback,
   ...worldProps
-}: Omit<WorldCanvasProps, 'config' | 'entering' | 'onExit' | 'onReady'> & {
+}: Omit<
+  WorldCanvasProps,
+  'config' | 'entering' | 'onExit' | 'onFull' | 'onReady'
+> & {
   config: SceneConfig | null
   fallback: ReactNode
 }) {
@@ -48,6 +51,7 @@ export function WorldGate({
   const [doorOpening, setDoorOpening] = useState(false)
   const entranceTimer = useRef<number | null>(null)
   const doorTimer = useRef<number | null>(null)
+  const [storeFull, setStoreFull] = useState(false)
 
   useEffect(() => {
     if (!config) return
@@ -98,6 +102,7 @@ export function WorldGate({
     setWorldReady(false)
     setEntering(false)
     setDoorOpening(false)
+    setStoreFull(false)
     setShowWorld(false)
   }, [])
 
@@ -107,6 +112,7 @@ export function WorldGate({
     url.searchParams.set('store', '1')
     window.history.pushState({}, '', url)
     setWorldReady(false)
+    setStoreFull(false)
     setEntering(true)
     setShowWorld(true)
   }, [])
@@ -142,22 +148,50 @@ export function WorldGate({
     }, 420)
   }, [entering])
 
+  const handleWorldFull = useCallback(() => {
+    const url = new URL(window.location.href)
+    url.searchParams.delete('store')
+    window.history.replaceState({}, '', url)
+    setWorldReady(false)
+    setEntering(false)
+    setDoorOpening(false)
+    setShowWorld(false)
+    setStoreFull(true)
+  }, [])
+
   return (
     <>
       {(!showWorld || !worldReady) && fallback}
       {config && capable && !showWorld && (
-        <button
-          type="button"
-          className="enter-store-button group fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-30 inline-flex h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg outline-none transition-[transform,box-shadow] duration-150 ease-out active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          data-opening={doorOpening ? 'true' : 'false'}
-          aria-busy={doorOpening}
-          onClick={beginEnterStore}
-        >
-          <span className="enter-store-door" aria-hidden="true">
-            <DoorOpen className="size-4" strokeWidth={1.8} />
-          </span>
-          Enter store
-        </button>
+        <div className="fixed right-4 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-30 flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2">
+          {storeFull && (
+            <div
+              className="max-w-xs rounded-2xl border border-border bg-card px-4 py-3 text-sm shadow-lg"
+              role="status"
+            >
+              <p className="font-semibold">The store is full right now</p>
+              <p className="mt-0.5 text-muted-foreground">
+                You can keep shopping here.
+              </p>
+            </div>
+          )}
+          <button
+            type="button"
+            className="enter-store-button group inline-flex h-11 items-center gap-2 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground shadow-lg outline-none transition-[transform,box-shadow] duration-150 ease-out active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            data-opening={doorOpening ? 'true' : 'false'}
+            aria-busy={doorOpening}
+            onClick={beginEnterStore}
+          >
+            <span className="enter-store-door" aria-hidden="true">
+              {storeFull ? (
+                <Users className="size-4" strokeWidth={1.8} />
+              ) : (
+                <DoorOpen className="size-4" strokeWidth={1.8} />
+              )}
+            </span>
+            {storeFull ? 'Try entering again' : 'Enter store'}
+          </button>
+        </div>
       )}
       {config && showWorld && (
         <DynamicWorld
@@ -165,6 +199,7 @@ export function WorldGate({
           config={config}
           entering={entering}
           onReady={markWorldReady}
+          onFull={handleWorldFull}
           onExit={showProductGrid}
         />
       )}

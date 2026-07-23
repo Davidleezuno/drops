@@ -2,27 +2,19 @@
 
 import { Canvas } from '@react-three/fiber'
 import { Check, List, Move, MousePointer2, X } from 'lucide-react'
-import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 
 import { BuyFlow } from '@/components/ds/buy-flow'
 import { stockRemaining } from '@/lib/drop-state'
-import {
-  REACTION_EMOJI,
-  type Appreciation,
-  type ReactionEmoji,
-} from '@/lib/social-events'
+import type { Appreciation } from '@/lib/social-events'
 import { createClient } from '@/lib/supabase/client'
 import { oklchHex } from '@/lib/theme'
 import type { Drop, Product } from '@/lib/types'
-import type {
-  Announcement,
-  ReactionEvent,
-} from '@/lib/use-drop-social'
+import type { Announcement } from '@/lib/use-drop-social'
 import { useWorldPresence } from '@/lib/use-world-presence'
 import { presenceKey as createPresenceKey } from '@/lib/world/names'
 import type { SceneConfig } from '@/lib/world/scene-config'
 
-import type { AvatarReaction } from './avatar'
 import {
   createWorldInput,
   MobileJoystick,
@@ -49,12 +41,9 @@ export type WorldCanvasProps = {
   announcement: Announcement | null
   appreciations: Appreciation[]
   socialPresenceKey: string | null
-  react: (emoji: ReactionEmoji) => void
-  subscribeToReactionEvents: (
-    listener: (event: ReactionEvent) => void,
-  ) => () => void
   entering: boolean
   onExit: () => void
+  onFull: () => void
   onReady: () => void
 }
 
@@ -98,25 +87,6 @@ function PurchaseBanner({ announcement }: { announcement: Announcement | null })
     </div>
   )
 }
-
-function WorldReactionBar({ react }: { react: (emoji: ReactionEmoji) => void }) {
-  return (
-    <div className="absolute right-4 bottom-[calc(env(safe-area-inset-bottom)+1.25rem)] z-30 flex items-center gap-1 rounded-full border border-white/35 bg-white/90 p-1 shadow-lg backdrop-blur-sm">
-      {(Object.keys(REACTION_EMOJI) as ReactionEmoji[]).map((emoji) => (
-        <button
-          key={emoji}
-          type="button"
-          aria-label={`Send a ${emoji} reaction`}
-          className="flex size-11 items-center justify-center rounded-full text-xl transition-transform hover:bg-black/5 active:scale-90"
-          onClick={() => react(emoji)}
-        >
-          {REACTION_EMOJI[emoji]}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 function WorldCheckout({
   product,
   drop,
@@ -175,10 +145,9 @@ export function WorldCanvas({
   announcement,
   appreciations,
   socialPresenceKey,
-  react,
-  subscribeToReactionEvents,
   entering,
   onExit,
+  onFull,
   onReady,
 }: WorldCanvasProps) {
   const supabase = useMemo(() => createClient(), [])
@@ -189,16 +158,17 @@ export function WorldCanvas({
   const accent = useMemo(() => oklchHex(config.accent), [config.accent])
   const input = useMemo<WorldInput>(() => createWorldInput(), [])
   const [selectedId, setSelectedId] = useState<string | null>(null)
-  const [reactions, setReactions] = useState<Record<string, AvatarReaction>>({})
   const [mobile, setMobile] = useState(false)
-  const reactionId = useRef(1)
   const presence = useWorldPresence({
     supabase,
     dropId: drop.id,
     presenceKey: key,
+    onFull,
   })
 
-  useEffect(() => onReady(), [onReady])
+  useEffect(() => {
+    if (presence.admitted) onReady()
+  }, [onReady, presence.admitted])
 
   useEffect(() => {
     const query = window.matchMedia('(max-width: 767px), (pointer: coarse)')
@@ -208,30 +178,11 @@ export function WorldCanvas({
     return () => query.removeEventListener('change', update)
   }, [])
 
-  useEffect(
-    () =>
-      subscribeToReactionEvents((event) => {
-        if (!event.key) return
-        const id = reactionId.current++
-        setReactions((current) => ({
-          ...current,
-          [event.key!]: { id, emoji: event.emoji },
-        }))
-        window.setTimeout(() => {
-          setReactions((current) => {
-            if (current[event.key!]?.id !== id) return current
-            const next = { ...current }
-            delete next[event.key!]
-            return next
-          })
-        }, 1_900)
-      }),
-    [subscribeToReactionEvents],
-  )
-
   const selectedProduct = selectedId
     ? products.find((product) => product.id === selectedId) ?? null
     : null
+
+  if (!presence.admitted) return null
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-[#eee9e1] text-[#2d2925]">
@@ -259,14 +210,12 @@ export function WorldCanvas({
               key={shopper.key}
               shopper={shopper}
               poses={presence.remotePoses}
-              reaction={reactions[shopper.key]}
             />
           ))}
           <PlayerControls
             input={input}
             name={presence.identity.name}
             tint={presence.identity.tint}
-            reaction={reactions[key]}
             enabled={!selectedProduct}
             entering={entering}
             onPose={presence.broadcastPose}
@@ -308,7 +257,6 @@ export function WorldCanvas({
       </div>
 
       {!selectedProduct && !entering && <MobileJoystick input={input} />}
-      {!entering && <WorldReactionBar react={react} />}
       {selectedProduct && (
         <WorldCheckout
           product={selectedProduct}

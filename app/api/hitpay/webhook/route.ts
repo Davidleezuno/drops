@@ -1,8 +1,7 @@
-import { after, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 import { createServiceClient } from '@/lib/db'
 import { parseHitPayCompletedEvent } from '@/lib/hitpay'
-import { broadcastPaidOrder } from '@/lib/social-server'
 import { verifyHitPaySignature } from '@/lib/verify'
 
 const UUID_PATTERN =
@@ -66,13 +65,6 @@ export async function POST(request: Request) {
   if (error) {
     console.error('Failed to process HitPay webhook', error)
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
-  }
-
-  // Announce money landing (future-ideas §1b). Only a settlement this call
-  // actually performed — duplicates and PAID_LATE stay silent.
-  if (outcome === 'paid') {
-    const referenceNumber = event.referenceNumber
-    after(() => broadcastPaidOrder(referenceNumber))
   }
 
   return NextResponse.json({ received: true, outcome })

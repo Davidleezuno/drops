@@ -1,9 +1,8 @@
-import { after, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 
 import { fulfilmentIsAvailable, parseBuyRequest } from '@/lib/checkout'
 import { createServiceClient } from '@/lib/db'
 import { dropWindowClosed, variantStockRemaining } from '@/lib/drop-state'
-import { broadcastClaim } from '@/lib/social-server'
 import {
   createHitPayPaymentRequest,
   HitPayRequestError,
@@ -175,16 +174,6 @@ export async function POST(request: Request) {
       { status: 500 },
     )
   }
-
-  // Social layer (future-ideas §1b): announce the claim after responding.
-  after(() =>
-    broadcastClaim({
-      dropId: product.drop.id,
-      buyerName: details.buyerName,
-      productName: product.name,
-      qty: details.quantity,
-    }),
-  )
 
   return NextResponse.json(
     { checkoutUrl: paymentRequest.url, orderId: order.id },

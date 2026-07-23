@@ -163,6 +163,8 @@ export function PlayerControls({
       -Math.cos(yaw.current) * forward + Math.sin(yaw.current) * right,
     )
     if (velocity.current.lengthSq() > 1) velocity.current.normalize()
+    const vx = velocity.current.x * 3.2
+    const vz = velocity.current.z * 3.2
     velocity.current.multiplyScalar(delta * 3.2)
 
     if (interactive) {
@@ -199,7 +201,13 @@ export function PlayerControls({
       camera.position.lerp(cameraTarget, 1 - Math.exp(-delta * 8))
     }
     camera.lookAt(player.position.x, 0.72, player.position.z)
-    onPose({ x: player.position.x, z: player.position.z, ry: yaw.current })
+    onPose({
+      x: player.position.x,
+      z: player.position.z,
+      ry: yaw.current,
+      vx,
+      vz,
+    })
   })
 
   return (

@@ -5,12 +5,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { worldIdentity } from '@/lib/world/names'
 
-// Low send rate + client-side interpolation (see RemoteAvatar): 50 shoppers at
-// 3.3Hz stays under Supabase Realtime message-rate limits where 10Hz would not.
-const MOVE_INTERVAL_MS = 300
-const MAX_RENDERED_REMOTES = 16
+const MAX_WORLD_SHOPPERS = 20
+const MOVEMENT_SHARDS = 5
+const MOVE_HEARTBEAT_MS = 2_000
+const MOVE_STATE_CHANGE_MIN_MS = 1_000
 
-export type WorldPose = { x: number; z: number; ry: number }
+export type WorldPose = {
+  x: number
+  z: number
+  ry: number
+  vx?: number
+  vz?: number
+  receivedAt?: number
+}
 
 export type RemoteShopper = {
   key: string
@@ -20,6 +27,10 @@ export type RemoteShopper = {
 
 export function worldTopic(dropId: string) {
   return `drop-${dropId}-world`
+}
+
+function worldMovementTopic(dropId: string, shard: number) {
+  return `drop-${dropId}-world-move-${shard}`
 }
 
 function finitePose(payload: unknown): WorldPose | null {
@@ -34,40 +45,56 @@ function finitePose(payload: unknown): WorldPose | null {
   ) {
     return null
   }
-  return { x: move.x, z: move.z, ry: move.ry }
+  const vx =
+    typeof move.vx === 'number' && Number.isFinite(move.vx) ? move.vx : 0
+  const vz =
+    typeof move.vz === 'number' && Number.isFinite(move.vz) ? move.vz : 0
+  return {
+    x: move.x,
+    z: move.z,
+    ry: move.ry,
+    vx,
+    vz,
+    receivedAt: performance.now(),
+  }
 }
 
 export function useWorldPresence({
   supabase,
   dropId,
   presenceKey,
+  onFull,
 }: {
   supabase: SupabaseClient
   dropId: string
   presenceKey: string
+  onFull: () => void
 }) {
   const identity = useMemo(() => worldIdentity(presenceKey), [presenceKey])
   const [remotes, setRemotes] = useState<RemoteShopper[]>([])
-  const [shopperCount, setShopperCount] = useState(1)
+  const [shopperCount, setShopperCount] = useState(0)
+  const [admitted, setAdmitted] = useState(false)
+  const [movementShard, setMovementShard] = useState<number | null>(null)
   // Poses live outside React state: move broadcasts arrive many times per
   // second and RemoteAvatar reads them in its frame loop, so routing them
   // through setState would re-render the whole canvas tree per message.
   const posesRef = useRef<Map<string, WorldPose>>(new Map())
   const renderedKeysRef = useRef<Set<string>>(new Set())
-  const channelRef = useRef<RealtimeChannel | null>(null)
+  const movementChannelRef = useRef<RealtimeChannel | null>(null)
   const readyRef = useRef(false)
   const lastSentAtRef = useRef(0)
   const lastPoseRef = useRef<WorldPose | null>(null)
+  const lastMovingRef = useRef(false)
+  const joinedAtRef = useRef<number | null>(null)
+  const fullNotifiedRef = useRef(false)
 
   useEffect(() => {
     let channel: RealtimeChannel | undefined
+    joinedAtRef.current ??= Date.now()
 
     try {
       channel = supabase.channel(worldTopic(dropId), {
-        config: {
-          presence: { key: presenceKey },
-          broadcast: { self: false },
-        },
+        config: { presence: { key: presenceKey } },
       })
 
       channel
@@ -77,79 +104,152 @@ export function useWorldPresence({
             Array<Record<string, unknown>>
           >
           const entries = Object.entries(state)
-          setShopperCount(Math.max(1, entries.length))
+            .map(([key, metas]) => {
+              const meta = metas[0]
+              const joinedAt =
+                typeof meta?.joinedAt === 'number'
+                  ? meta.joinedAt
+                  : Number.MAX_SAFE_INTEGER
+              return { key, meta, joinedAt }
+            })
+            .sort(
+              (left, right) =>
+                left.joinedAt - right.joinedAt ||
+                left.key.localeCompare(right.key),
+            )
+          const admittedEntries = entries.slice(0, MAX_WORLD_SHOPPERS)
+          const ownIndex = admittedEntries.findIndex(
+            (entry) => entry.key === presenceKey,
+          )
 
-          const rendered = entries
-            .filter(([key]) => key !== presenceKey)
-            .slice(0, MAX_RENDERED_REMOTES)
+          if (ownIndex === -1) {
+            setAdmitted(false)
+            setMovementShard(null)
+            readyRef.current = false
+            if (
+              entries.some((entry) => entry.key === presenceKey) &&
+              !fullNotifiedRef.current
+            ) {
+              fullNotifiedRef.current = true
+              onFull()
+            }
+            return
+          }
 
-          renderedKeysRef.current = new Set(rendered.map(([key]) => key))
+          fullNotifiedRef.current = false
+          setAdmitted(true)
+          setShopperCount(admittedEntries.length)
+          const ownMovementShard = ownIndex % MOVEMENT_SHARDS
+          setMovementShard(ownMovementShard)
+
+          const rendered = admittedEntries
+            .filter(
+              (entry, index) =>
+                entry.key !== presenceKey &&
+                index % MOVEMENT_SHARDS === ownMovementShard,
+            )
+
+          renderedKeysRef.current = new Set(rendered.map((entry) => entry.key))
           for (const key of posesRef.current.keys()) {
             if (!renderedKeysRef.current.has(key)) posesRef.current.delete(key)
           }
-          rendered.forEach(([key], index) => {
-            if (!posesRef.current.has(key)) {
-              posesRef.current.set(key, {
+          rendered.forEach((entry, index) => {
+            if (!posesRef.current.has(entry.key)) {
+              posesRef.current.set(entry.key, {
                 x: ((index % 4) - 1.5) * 0.8,
                 z: 3.2 + Math.floor(index / 4) * 0.45,
                 ry: 0,
+                vx: 0,
+                vz: 0,
+                receivedAt: performance.now(),
               })
             }
           })
 
           setRemotes(
-            rendered.map(([key, metas]) => {
-              const meta = metas[0]
-              const fallback = worldIdentity(key)
+            rendered.map((entry) => {
+              const fallback = worldIdentity(entry.key)
               return {
-                key,
-                name: typeof meta?.name === 'string' ? meta.name : fallback.name,
-                tint: typeof meta?.tint === 'string' ? meta.tint : fallback.tint,
+                key: entry.key,
+                name:
+                  typeof entry.meta?.name === 'string'
+                    ? entry.meta.name
+                    : fallback.name,
+                tint:
+                  typeof entry.meta?.tint === 'string'
+                    ? entry.meta.tint
+                    : fallback.tint,
               }
             }),
           )
         })
-        .on('broadcast', { event: 'move' }, ({ payload }) => {
-          const key = (payload as { key?: unknown } | undefined)?.key
-          if (typeof key !== 'string' || key === presenceKey) return
-          if (!renderedKeysRef.current.has(key)) return
-          const pose = finitePose(payload)
-          if (pose) posesRef.current.set(key, pose)
-        })
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') {
-            readyRef.current = true
-            void channel!.track({ ...identity, joinedAt: new Date().toISOString() })
+            void channel!.track({
+              ...identity,
+              joinedAt: joinedAtRef.current!,
+            })
           }
         })
-
-      channelRef.current = channel
     } catch (caught) {
       console.warn('World presence unavailable', caught)
     }
 
     return () => {
       readyRef.current = false
-      channelRef.current = null
+      setAdmitted(false)
+      setMovementShard(null)
       if (channel) void supabase.removeChannel(channel)
     }
-  }, [dropId, identity, presenceKey, supabase])
+  }, [dropId, identity, onFull, presenceKey, supabase])
+
+  useEffect(() => {
+    if (!admitted || movementShard === null) return
+
+    const channel = supabase
+      .channel(worldMovementTopic(dropId, movementShard), {
+        config: { broadcast: { self: false } },
+      })
+      .on('broadcast', { event: 'move' }, ({ payload }) => {
+        const key = (payload as { key?: unknown } | undefined)?.key
+        if (typeof key !== 'string' || key === presenceKey) return
+        if (!renderedKeysRef.current.has(key)) return
+        const pose = finitePose(payload)
+        if (pose) posesRef.current.set(key, pose)
+      })
+      .subscribe((status) => {
+        readyRef.current = status === 'SUBSCRIBED'
+      })
+
+    movementChannelRef.current = channel
+    return () => {
+      readyRef.current = false
+      movementChannelRef.current = null
+      void supabase.removeChannel(channel)
+    }
+  }, [admitted, dropId, movementShard, presenceKey, supabase])
 
   const broadcastPose = useCallback(
     (pose: WorldPose) => {
       if (!readyRef.current) return
       const now = performance.now()
       const previous = lastPoseRef.current
-      const unchanged =
-        previous &&
-        Math.abs(previous.x - pose.x) < 0.002 &&
-        Math.abs(previous.z - pose.z) < 0.002 &&
-        Math.abs(previous.ry - pose.ry) < 0.002
-      if (unchanged || now - lastSentAtRef.current < MOVE_INTERVAL_MS) return
+      const moving = Math.hypot(pose.vx ?? 0, pose.vz ?? 0) > 0.01
+      const stateChanged = moving !== lastMovingRef.current
+      const elapsed = now - lastSentAtRef.current
+      const turned =
+        previous !== null && Math.abs(previous.ry - pose.ry) > 0.15
+      const shouldSend =
+        previous === null ||
+        (stateChanged && elapsed >= MOVE_STATE_CHANGE_MIN_MS) ||
+        (moving && elapsed >= MOVE_HEARTBEAT_MS) ||
+        (turned && elapsed >= MOVE_HEARTBEAT_MS)
+      if (!shouldSend) return
 
       lastSentAtRef.current = now
       lastPoseRef.current = pose
-      void channelRef.current?.send({
+      lastMovingRef.current = moving
+      void movementChannelRef.current?.send({
         type: 'broadcast',
         event: 'move',
         payload: { type: 'move', key: presenceKey, ...pose },
@@ -158,5 +258,12 @@ export function useWorldPresence({
     [presenceKey],
   )
 
-  return { identity, remotes, shopperCount, remotePoses: posesRef, broadcastPose }
+  return {
+    admitted,
+    identity,
+    remotes,
+    shopperCount,
+    remotePoses: posesRef,
+    broadcastPose,
+  }
 }

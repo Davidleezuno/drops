@@ -8,7 +8,6 @@ import { DropHeader } from '@/components/ds/drop-header'
 import { LivePill } from '@/components/ds/live-pill'
 import { Poster } from '@/components/ds/poster'
 import { ProductRow } from '@/components/ds/product-row'
-import { ReactionLayer } from '@/components/ds/reaction-layer'
 import { SocialToast } from '@/components/ds/social-toast'
 import { WatchingPill } from '@/components/ds/watching-pill'
 import { WorldGate } from '@/components/world/world-gate'
@@ -68,13 +67,14 @@ export function DropStorefront({
 }) {
   const supabase = useMemo(() => createClient(), [])
   const [windowClosed, setWindowClosed] = useState(initialEnded)
+  const social = useDropSocial(supabase, drop.id, { initialAppreciations })
   const products = useLiveDropProducts({
     supabase,
     dropId: drop.id,
     initialProducts,
     paused: windowClosed,
+    onPaidStockChange: social.announcePaid,
   })
-  const social = useDropSocial(supabase, drop.id, { initialAppreciations })
 
   const allSoldOut = computeAllSoldOut(products)
 
@@ -99,22 +99,7 @@ export function DropStorefront({
         />
       </DropHeader>
 
-      {/* Social overlays serve the race; the ended poster gets silence. */}
-      {!windowClosed && (
-        <>
-          <SocialToast announcement={social.announcement} />
-          <ReactionLayer
-            subscribe={social.subscribeToReactions}
-            react={social.react}
-            className={
-              drop.theme?.archetype === 'grid' ||
-              drop.theme?.archetype === 'spotlight'
-                ? 'max-sm:hidden'
-                : undefined
-            }
-          />
-        </>
-      )}
+      {!windowClosed && <SocialToast announcement={social.announcement} />}
 
       {windowClosed ? (
         <Poster variant="ended" title="This drop has ended" className="flex-1">
@@ -199,8 +184,6 @@ export function DropStorefront({
       announcement={social.announcement}
       appreciations={social.appreciations}
       socialPresenceKey={social.presenceKey}
-      react={social.react}
-      subscribeToReactionEvents={social.subscribeToReactionEvents}
     />
   )
 }
