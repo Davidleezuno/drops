@@ -9,6 +9,7 @@ type ArchetypeProps = {
   deliveryFee: number
   pickupNote: string | null
   heroImageUrl?: string | null
+  disabled?: boolean
 }
 
 /**
@@ -20,6 +21,7 @@ export function GridArchetype({
   fulfilment,
   deliveryFee,
   pickupNote,
+  disabled,
 }: ArchetypeProps) {
   return (
     <ul className="grid grid-cols-2 items-stretch gap-x-3 gap-y-8">
@@ -34,6 +36,7 @@ export function GridArchetype({
             fulfilment={fulfilment}
             deliveryFee={deliveryFee}
             pickupNote={pickupNote}
+            disabled={disabled}
             priority={index < 2}
           />
         </li>

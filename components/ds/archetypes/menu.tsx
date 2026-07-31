@@ -11,6 +11,7 @@ type ArchetypeProps = {
   deliveryFee: number
   pickupNote: string | null
   heroImageUrl?: string | null
+  disabled?: boolean
 }
 
 /**
@@ -24,6 +25,7 @@ export function MenuArchetype({
   deliveryFee,
   pickupNote,
   heroImageUrl,
+  disabled,
 }: ArchetypeProps) {
   const hero =
     theme.hero.source === 'upload-crop' && heroImageUrl
@@ -65,6 +67,7 @@ export function MenuArchetype({
               fulfilment={fulfilment}
               deliveryFee={deliveryFee}
               pickupNote={pickupNote}
+              disabled={disabled}
             />
           </li>
         ))}

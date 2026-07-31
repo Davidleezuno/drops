@@ -11,6 +11,7 @@ export type ArchetypeProps = {
   deliveryFee: number
   pickupNote: string | null
   heroImageUrl?: string | null
+  disabled?: boolean
 }
 
 /**

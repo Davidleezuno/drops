@@ -1,6 +1,6 @@
 'use client'
 
-import { MapPin, Truck } from 'lucide-react'
+import { LockKeyhole, MapPin, Truck } from 'lucide-react'
 import { useCallback, useMemo, useState } from 'react'
 
 import { ArchetypeLayout } from '@/components/ds/archetypes'
@@ -102,11 +102,22 @@ export function DropStorefront({
 
       {!windowClosed && <SocialToast announcement={social.announcement} />}
 
-      {windowClosed ? (
-        <Poster variant="ended" title="This drop has ended" className="flex-1">
-          The window closed. Follow {drop.seller_name} for the next one.
-        </Poster>
-      ) : allSoldOut ? (
+      {windowClosed && (
+        <div
+          className="mb-6 flex items-start gap-3 rounded-2xl border border-border bg-muted px-4 py-3.5"
+          role="status"
+        >
+          <LockKeyhole className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <div>
+            <p className="text-sm font-semibold">This store is currently closed</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              You can still look around, but checkout is unavailable.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!windowClosed && allSoldOut ? (
         <Poster
           variant="sold-out"
           title="Sold out"
@@ -124,6 +135,7 @@ export function DropStorefront({
               deliveryFee={drop.delivery_fee}
               pickupNote={drop.pickup_note}
               heroImageUrl={heroImageUrlFor(drop.theme, products)}
+              disabled={windowClosed}
             />
           ) : (
             <ul className="flex flex-col gap-3">
@@ -138,6 +150,7 @@ export function DropStorefront({
                     fulfilment={drop.fulfilment}
                     deliveryFee={drop.delivery_fee}
                     pickupNote={drop.pickup_note}
+                    disabled={windowClosed}
                   />
                 </li>
               ))}

@@ -85,9 +85,10 @@ function StoryVisual({ active }: { active: number }) {
           >
             <div className={styles.photoPaper}>
               <Image
-                src="/prototype/panipuri-b.jpg"
+                src="/prototype/panipuri-menu.webp"
                 alt="A menu photo ready to become a storefront"
                 fill
+                unoptimized
                 sizes="(max-width: 760px) 80vw, 42vw"
               />
             </div>
@@ -108,9 +109,10 @@ function StoryVisual({ active }: { active: number }) {
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
           >
             <Image
-              src="/hero/virtual-world-storefront-exterior.png"
+              src="/hero/virtual-world-storefront-exterior.webp"
               alt="The generated virtual storefront"
               fill
+              unoptimized
               sizes="(max-width: 760px) 90vw, 46vw"
             />
             <span className={styles.worldReady}>WORLD READY</span>
@@ -245,10 +247,15 @@ export function LandingPage() {
           >
             STOREFRONTS FOR PEOPLE WITH A FOLLOWING
           </motion.p>
-          <h1 id="hero-title" className={styles.heroTitle}>
-            {['From one photo', 'to a world', 'people can shop.'].map((line, index) => (
+          <h1
+            id="hero-title"
+            className={styles.heroTitle}
+            aria-label="Create digital storefronts under a minute."
+          >
+            {['Create digital', 'storefronts', 'under a minute.'].map((line, index) => (
               <span className={index === 2 ? styles.heroTitleAccent : ''} key={line}>
                 <motion.i
+                  aria-hidden="true"
                   initial={reduceMotion ? false : { y: '110%' }}
                   animate={{ y: 0 }}
                   transition={{ delay: 0.32 + index * 0.1, duration: 0.82, ease: [0.22, 1, 0.36, 1] }}
@@ -275,8 +282,8 @@ export function LandingPage() {
             <Link href="/new" className={styles.primaryButton}>
               Create my store <ArrowRight size={17} />
             </Link>
-            <Link href="/rotiwife/tonight" className={styles.secondaryButton}>
-              Enter a live drop <ArrowDownRight size={17} />
+            <Link href="/stores" className={styles.secondaryButton}>
+              Browse open stores <ArrowDownRight size={17} />
             </Link>
           </motion.div>
           <motion.div
@@ -328,7 +335,7 @@ export function LandingPage() {
             viewport={{ once: true, margin: '-15%' }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Image src="/prototype/puri-close.jpg" alt="Fresh panipuri for a limited drop" fill sizes="(max-width: 760px) 70vw, 31vw" />
+            <Image src="/prototype/puri-close.jpg" alt="Fresh panipuri for a limited drop" fill unoptimized sizes="(max-width: 760px) 70vw, 31vw" />
             <figcaption>made tonight / gone tonight</figcaption>
           </motion.figure>
           <motion.figure
@@ -338,7 +345,7 @@ export function LandingPage() {
             viewport={{ once: true, margin: '-15%' }}
             transition={{ duration: 0.9, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Image src="/prototype/linen-wide.jpg" alt="A limited linen collection" fill sizes="(max-width: 760px) 88vw, 48vw" />
+            <Image src="/prototype/linen-wide.jpg" alt="A limited linen collection" fill unoptimized sizes="(max-width: 760px) 88vw, 48vw" />
             <figcaption>small batch / big entrance</figcaption>
           </motion.figure>
           <motion.aside

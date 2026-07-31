@@ -16,12 +16,14 @@ export function ProductGridCard({
   fulfilment,
   deliveryFee,
   pickupNote,
+  disabled = false,
   priority = false,
 }: {
   product: Product
   fulfilment: 'pickup' | 'delivery' | 'both'
   deliveryFee: number
   pickupNote: string | null
+  disabled?: boolean
   priority?: boolean
 }) {
   const remaining = stockRemaining(product)
@@ -93,7 +95,7 @@ export function ProductGridCard({
       }`}
     >
       {content}
-      {!soldOut && (
+      {!soldOut && !disabled && (
         <BuyFlow
           productId={product.id}
           productName={product.name}

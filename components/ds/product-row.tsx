@@ -17,12 +17,14 @@ export function ProductRow({
   fulfilment,
   deliveryFee,
   pickupNote,
+  disabled = false,
   className,
 }: {
   product: Product
   fulfilment: "pickup" | "delivery" | "both"
   deliveryFee: number
   pickupNote: string | null
+  disabled?: boolean
   className?: string
 }) {
   const remaining = stockRemaining(product)
@@ -93,7 +95,7 @@ export function ProductRow({
         />
       </div>
 
-      {!soldOut && (
+      {!soldOut && !disabled && (
         <BuyFlow
           productId={product.id}
           productName={product.name}
