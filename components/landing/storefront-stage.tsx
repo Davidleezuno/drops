@@ -39,10 +39,11 @@ export function StorefrontStage() {
       transition={{ duration: 1.05, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
     >
       <Image
-        src="/hero/virtual-world-storefront-exterior.png"
+        src="/hero/virtual-world-storefront-exterior.webp"
         alt="A playful virtual popup shop in a sunlit plaza"
         fill
         priority
+        unoptimized
         sizes="(max-width: 900px) 100vw, 64vw"
         className={`${styles.storefrontImage} ${modelReady ? styles.storefrontImageReady : ''}`}
       />

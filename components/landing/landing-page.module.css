@@ -362,7 +362,7 @@
 .heroTitle {
   margin: 0;
   font-family: var(--font-bricolage), sans-serif;
-  font-size: clamp(3.2rem, 5.5vw, 6.9rem);
+  font-size: clamp(3.15rem, 5vw, 6.25rem);
   font-weight: 600;
   letter-spacing: -0.068em;
   line-height: 0.88;
@@ -587,6 +587,8 @@
 
 .momentTall { height: 76%; }
 .momentWide { height: 100%; }
+.momentTall img { object-position: center 44%; }
+.momentWide img { object-position: center top; }
 
 .momentStrip figcaption {
   position: absolute;
