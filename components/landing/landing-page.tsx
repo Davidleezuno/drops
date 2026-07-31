@@ -87,7 +87,7 @@ function StoryVisual({ active }: { active: number }) {
           >
             <div className={styles.photoPaper}>
               <Image
-                src="/prototype/panipuri-menu.webp"
+                src="/landing/panipuri-menu.webp"
                 alt="A menu photo ready to become a storefront"
                 fill
                 unoptimized
@@ -165,13 +165,9 @@ function StorySection() {
         <Reveal>
           <p className={styles.eyebrow}>SEE IT HAPPEN</p>
           <h2>
-            One photo in.
+            Product photos in.
             <span>A working store out.</span>
           </h2>
-          <p className={styles.storyIntro}>
-            No catalogue setup marathon. Pick a step to see how Drops turns what
-            you already have into a store people can visit and buy from.
-          </p>
         </Reveal>
       </div>
       <div className={styles.storyGrid}>
@@ -200,7 +196,7 @@ function StorySection() {
             </button>
           ))}
           <Link href="/stores" className={styles.storyCta}>
-            See a store for yourself <ArrowRight size={16} />
+            See open stores <ArrowRight size={16} />
           </Link>
         </div>
       </div>
@@ -300,9 +296,6 @@ export function LandingPage() {
             animate={{ opacity: 1 }}
             transition={{ delay: 1.05, duration: 0.7 }}
           >
-            <span><Check size={12} /> HitPay checkout</span>
-            <span><Check size={12} /> Live stock</span>
-            <span><Check size={12} /> No code</span>
           </motion.div>
         </div>
       </section>
@@ -328,11 +321,11 @@ export function LandingPage() {
         <Reveal className={styles.statementCopy}>
           <p className={styles.eyebrow}>SELL WHERE THE ENERGY IS</p>
           <h2>
-            Stop sending instructions.
-            <span>Send an address.</span>
+            One link to share.
+            <span>One place to buy.</span>
           </h2>
           <p>
-            Your audience already knows why they want it. Drops gives the moment somewhere to happen—one shareable world where everyone sees the same stock, the same countdown, and the same open door.
+            Turn the moment into a storefront where buyers can browse, see live availability, and pay.
           </p>
         </Reveal>
         <div className={styles.momentStrip}>
@@ -343,7 +336,7 @@ export function LandingPage() {
             viewport={{ once: true, margin: '-15%' }}
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Image src="/prototype/puri-close.jpg" alt="Fresh panipuri for a limited drop" fill unoptimized sizes="(max-width: 760px) 70vw, 31vw" />
+            <Image src="/landing/panipuri-drop.webp" alt="Fresh panipuri for a limited drop" fill unoptimized sizes="(max-width: 760px) 70vw, 31vw" />
             <figcaption>made tonight / gone tonight</figcaption>
           </motion.figure>
           <motion.figure
@@ -353,7 +346,7 @@ export function LandingPage() {
             viewport={{ once: true, margin: '-15%' }}
             transition={{ duration: 0.9, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
           >
-            <Image src="/prototype/linen-wide.jpg" alt="A limited linen collection" fill unoptimized sizes="(max-width: 760px) 88vw, 48vw" />
+            <Image src="/landing/linen-collection.webp" alt="A limited linen collection" fill unoptimized sizes="(max-width: 760px) 88vw, 48vw" />
             <figcaption>small batch / big entrance</figcaption>
           </motion.figure>
           <motion.aside
@@ -380,8 +373,8 @@ export function LandingPage() {
         <Reveal className={styles.liveHeading}>
           <p className={styles.eyebrow}>EVERY ARRIVAL CHANGES THE ROOM</p>
           <h2>
-            It feels live
-            <span>because it is.</span>
+            Roam the storefront
+            <span>with other buyers.</span>
           </h2>
           <p>Buyers enter together. Stock moves for everyone. A sale becomes part of the atmosphere—not another admin task.</p>
         </Reveal>
