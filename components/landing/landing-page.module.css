@@ -643,24 +643,31 @@
 
 .storyHeading {
   max-width: 1050px;
-  padding: 110px 0 100px;
+  padding: 110px 0 80px;
 }
 
 .storyHeading h2 {
   font-size: clamp(3.3rem, 7vw, 8.4rem);
 }
 
+.storyIntro {
+  max-width: 620px;
+  margin: 34px 0 0;
+  color: var(--muted);
+  font-size: 17px;
+  line-height: 1.65;
+}
+
 .storyGrid {
   display: grid;
-  grid-template-columns: minmax(0, 1.03fr) minmax(360px, 0.7fr);
-  gap: clamp(50px, 8vw, 130px);
+  grid-template-columns: minmax(0, 1.08fr) minmax(390px, 0.72fr);
+  gap: clamp(42px, 7vw, 110px);
+  align-items: center;
 }
 
 .storySticky {
-  position: sticky;
-  top: 100px;
-  height: calc(100svh - 130px);
-  max-height: 720px;
+  height: min(68vw, 690px);
+  max-height: 690px;
 }
 
 .storyVisual {
@@ -848,49 +855,128 @@
 }
 
 .storySteps {
-  padding-bottom: 18vh;
+  display: flex;
+  flex-direction: column;
 }
 
 .storyStep {
   display: grid;
-  min-height: 75vh;
-  padding: 10vh 0;
-  align-content: center;
+  width: 100%;
+  padding: 24px 0;
+  grid-template-columns: 42px 1fr;
+  align-items: start;
+  gap: 12px;
   border-bottom: 1px solid var(--line);
+  border-top: 0;
+  border-right: 0;
+  border-left: 0;
+  background: transparent;
   color: rgba(36, 29, 22, 0.38);
-  transition: color 500ms ease;
+  text-align: left;
+  cursor: pointer;
+  transition: color 350ms ease, padding 350ms ease;
 }
 
-.storyStep > span,
-.storyStep > p {
+.storyPrompt,
+.storyStepNumber,
+.storyStepCopy > span:first-child {
   font-family: var(--font-geist-mono), monospace;
   font-size: 9px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
-.storyStep > span { margin-bottom: 28px; }
-.storyStep > p { margin: 0 0 12px; }
-
-.storyStep h3 {
-  max-width: 550px;
+.storyPrompt {
   margin: 0;
+  padding-bottom: 13px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.storyStepNumber { padding-top: 5px; }
+
+.storyStepCopy {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.storyStepCopy > span:first-child {
+  margin-bottom: 8px;
+  color: inherit;
+}
+
+.storyStepCopy strong {
   font-family: var(--font-bricolage), sans-serif;
-  font-size: clamp(2.6rem, 4.2vw, 5.2rem);
+  font-size: clamp(1.8rem, 2.5vw, 3.1rem);
   font-weight: 600;
-  letter-spacing: -0.06em;
-  line-height: 0.96;
+  letter-spacing: -0.045em;
+  line-height: 1;
 }
 
-.storyStep > div {
-  max-width: 470px;
-  margin-top: 22px;
-  font-size: 16px;
-  line-height: 1.65;
+.storyStepCopy > span:nth-child(3) {
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
 }
 
-.storyStepActive { color: var(--ink); }
-.storyStepActive > p { color: var(--flame-deep); }
+.storyStepCopy em {
+  display: grid;
+  max-height: 0;
+  margin-top: 0;
+  overflow: hidden;
+  grid-template-columns: 18px 1fr;
+  align-items: start;
+  gap: 6px;
+  color: var(--ink);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 650;
+  line-height: 1.45;
+  opacity: 0;
+  transition: max-height 400ms ease, margin 400ms ease, opacity 300ms ease;
+}
+
+.storyStepCopy em svg {
+  margin-top: 2px;
+  color: #3f9a61;
+}
+
+.storyStepActive {
+  padding-left: 12px;
+  color: var(--ink);
+}
+
+.storyStepActive .storyStepCopy > span:first-child { color: var(--flame-deep); }
+
+.storyStepActive .storyStepCopy em {
+  max-height: 80px;
+  margin-top: 13px;
+  opacity: 1;
+}
+
+.storyCta {
+  display: inline-flex;
+  min-height: 46px;
+  margin-top: 24px;
+  padding: 0 18px;
+  align-self: flex-start;
+  align-items: center;
+  gap: 9px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: #fffaf1;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  transition: transform 180ms ease, background 180ms ease;
+}
+
+.storyCta:hover {
+  background: var(--flame-deep);
+  transform: translateY(-2px);
+}
 
 .liveSection {
   overflow: hidden;
@@ -1344,10 +1430,9 @@
 
   .storyHeading { padding-block: 84px 60px; }
   .storyGrid { grid-template-columns: 1fr; gap: 24px; }
-  .storySticky { top: 82px; z-index: 4; height: 52svh; min-height: 410px; }
+  .storySticky { height: 52svh; min-height: 410px; }
   .storyVisual { min-height: 410px; border-radius: 24px; }
-  .storySteps { padding-bottom: 0; }
-  .storyStep { min-height: 58vh; padding: 12vh 0; }
+  .storySteps { margin-top: 20px; }
 
   .liveConsole { grid-template-columns: 1fr 1fr; }
   .liveOrders { grid-column: 1 / -1; border-top: 1px solid rgba(255, 255, 255, 0.1); }
@@ -1401,9 +1486,9 @@
   .orderSummary strong { margin-top: 18px; }
   .orderList > div { padding: 12px; grid-template-columns: 0.8fr 1fr auto; }
   .orderList > div span:nth-child(2) { display: none; }
-  .storyStep { min-height: 52vh; }
-  .storyStep h3 { font-size: clamp(2.7rem, 12vw, 4.2rem); }
-  .storyStep > div { font-size: 15px; }
+  .storyStep { padding-block: 20px; }
+  .storyStepCopy strong { font-size: clamp(2rem, 9vw, 3rem); }
+  .storyIntro { margin-top: 24px; font-size: 15px; }
 
   .liveConsole { display: block; }
   .liveCount, .liveAvatars, .liveOrders { min-height: 300px; border-right: 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }

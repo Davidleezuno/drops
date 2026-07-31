@@ -3,7 +3,6 @@
 import {
   AnimatePresence,
   motion,
-  useMotionValueEvent,
   useReducedMotion,
   useScroll,
   useSpring,
@@ -11,7 +10,7 @@ import {
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowDownRight, ArrowRight, Check, Menu, MoveUpRight, X } from 'lucide-react'
-import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 
 import { StorefrontStage } from './storefront-stage'
 import styles from './landing-page.module.css'
@@ -20,20 +19,23 @@ const STORY_STEPS = [
   {
     number: '01',
     label: 'Bring what you have',
-    title: 'Start with a photo. Not a setup wizard.',
-    copy: 'Upload the menu, product shots, or notes already sitting in your camera roll. Drops turns the useful bits into products, prices, and stock.',
+    title: 'Upload one photo.',
+    copy: 'Use a menu, product shot, or handwritten list already in your camera roll.',
+    result: 'Drops pulls out the products, prices, options, and stock for you.',
   },
   {
     number: '02',
     label: 'Open the doors',
-    title: 'Your storefront becomes a place.',
-    copy: 'Choose the mood, add a name, and publish a world buyers can actually step into. Your storefront lives right here.',
+    title: 'Make it yours.',
+    copy: 'Check the details, choose the mood, and add the name buyers already know.',
+    result: 'You get one shareable store link, ready to open in minutes.',
   },
   {
     number: '03',
     label: 'Run the busy hour',
-    title: 'Orders arrive already organised.',
-    copy: 'HitPay confirms payment, stock updates for everyone, and the packing list is waiting when the window closes.',
+    title: 'Share it and start selling.',
+    copy: 'Send the link wherever your audience already follows you.',
+    result: 'HitPay confirms payment, stock updates live, and every paid order lands in your packing list.',
   },
 ] as const
 
@@ -149,30 +151,25 @@ function StoryVisual({ active }: { active: number }) {
 }
 
 function StorySection() {
-  const sectionRef = useRef<HTMLElement>(null)
   const [active, setActive] = useState(0)
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ['start 65%', 'end 55%'],
-  })
-
-  useMotionValueEvent(scrollYProgress, 'change', (value) => {
-    setActive(Math.min(2, Math.floor(value * 3)))
-  })
 
   return (
-    <section className={styles.storySection} id="how-it-works" ref={sectionRef}>
+    <section className={styles.storySection} id="how-it-works">
       <div className={styles.sectionTopline}>
         <span>02 / HOW IT WORKS</span>
         <span>FROM CAMERA ROLL TO OPEN DOORS</span>
       </div>
       <div className={styles.storyHeading}>
         <Reveal>
-          <p className={styles.eyebrow}>THREE SMALL MOVES</p>
+          <p className={styles.eyebrow}>SEE IT HAPPEN</p>
           <h2>
-            A shop link in minutes.
-            <span>A world when they arrive.</span>
+            One photo in.
+            <span>A working store out.</span>
           </h2>
+          <p className={styles.storyIntro}>
+            No catalogue setup marathon. Pick a step to see how Drops turns what
+            you already have into a store people can visit and buy from.
+          </p>
         </Reveal>
       </div>
       <div className={styles.storyGrid}>
@@ -180,17 +177,29 @@ function StorySection() {
           <StoryVisual active={active} />
         </div>
         <div className={styles.storySteps}>
+          <p className={styles.storyPrompt}>Choose a step to see it in action</p>
           {STORY_STEPS.map((step, index) => (
-            <article
+            <button
+              type="button"
               key={step.number}
               className={`${styles.storyStep} ${active === index ? styles.storyStepActive : ''}`}
+              aria-pressed={active === index}
+              onClick={() => setActive(index)}
+              onFocus={() => setActive(index)}
+              onMouseEnter={() => setActive(index)}
             >
-              <span>{step.number}</span>
-              <p>{step.label}</p>
-              <h3>{step.title}</h3>
-              <div>{step.copy}</div>
-            </article>
+              <span className={styles.storyStepNumber}>{step.number}</span>
+              <span className={styles.storyStepCopy}>
+                <span>{step.label}</span>
+                <strong>{step.title}</strong>
+                <span>{step.copy}</span>
+                <em><Check size={14} /> {step.result}</em>
+              </span>
+            </button>
           ))}
+          <Link href="/stores" className={styles.storyCta}>
+            See a store for yourself <ArrowRight size={16} />
+          </Link>
         </div>
       </div>
     </section>
