@@ -223,7 +223,7 @@ export function LandingPage() {
           </Link>
           <div className={`${styles.navLinks} ${menuOpen ? styles.navLinksOpen : ''}`}>
             <Link href="#how-it-works" onClick={() => setMenuOpen(false)}>How it works</Link>
-            <Link href="/slides" onClick={() => setMenuOpen(false)}>Why I built this</Link>
+            <Link href="/why" onClick={() => setMenuOpen(false)}>Why I built this</Link>
             <Link href="/new" className={styles.navCta} onClick={() => setMenuOpen(false)}>
               Open a store <MoveUpRight size={14} />
             </Link>
