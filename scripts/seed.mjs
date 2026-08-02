@@ -23,8 +23,8 @@ const DROPS = [
     deliveryFee: 5,
     pickupNote: 'Blk 123 Hougang Ave 1 — exact unit shared after payment',
     shots: [
-      { filename: 'set-a.jpeg', source: '../docs/test-images/set_1.jpeg', contentType: 'image/jpeg' },
-      { filename: 'set-b.jpeg', source: '../docs/test-images/set_2.jpeg', contentType: 'image/jpeg' },
+      { filename: 'set-a.jpeg', source: '../fixtures/seed/food-set-1.jpeg', contentType: 'image/jpeg' },
+      { filename: 'set-b.jpeg', source: '../fixtures/seed/food-set-2.jpeg', contentType: 'image/jpeg' },
     ],
     products: [
       { name: 'Set A', variant: 'Curry chicken + 2 roti prata', price: 35, stock_total: 6 },
@@ -59,7 +59,7 @@ const DROPS = [
     deliveryFee: 4,
     pickupNote: 'Weekend pickup at Everton Park — slot shared after payment',
     shots: [
-      { filename: 'studio-tee.png', source: '../docs/test-images/fashion-studio-sunday.png', contentType: 'image/png' },
+      { filename: 'studio-tee.png', source: '../fixtures/seed/fashion-studio-sunday.png', contentType: 'image/png' },
     ],
     products: [
       { name: 'Studio Tee', variant: 'Heavyweight 240gsm, boxy cut', price: 32, stock_total: 10 },

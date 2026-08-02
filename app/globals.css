@@ -5,7 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 /*
- * Drops design tokens — see docs/design-brief.md
+ * Drops design tokens — shared across the storefront and project story.
  *
  * Voice: clean warm white + ink, ink pill CTAs, one flame accent for the
  * brand and live moments, semantic drop-state colors.

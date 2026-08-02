@@ -1,5 +1,5 @@
 /**
- * Live smoke test: `pnpm tsx scripts/smoke-draft-agent.ts docs/test-images/set_1.jpeg`
+ * Live smoke test: `pnpm agent:smoke fixtures/seed/food-set-1.jpeg`
  */
 import { readFile } from 'node:fs/promises'
 import { extname } from 'node:path'

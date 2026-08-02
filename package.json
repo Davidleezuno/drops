@@ -13,8 +13,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "agent:smoke": "tsx scripts/smoke-draft-agent.ts",
-    "agent:eval": "tsx scripts/eval-draft-agent.ts"
+    "agent:smoke": "tsx scripts/smoke-draft-agent.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
